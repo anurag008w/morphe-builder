@@ -55,47 +55,48 @@ def download_apk(url, dest_file):
     headers = {
         "User-Agent": user_agent,
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.5",
-        "Referer": url
+        "Accept-Language": "en-US,en;q=0.5"
     }
 
-    req = urllib.request.Request(url, headers=headers)
-    with urllib.request.urlopen(req) as resp:
-        content_type = resp.headers.get("Content-Type", "").lower()
-        first_chunk = resp.read(4096)
-        if first_chunk.startswith(b"PK\x03\x04") or "package-archive" in content_type or "octet-stream" in content_type or "application/zip" in content_type:
-            with open(dest_file, "wb") as f:
-                f.write(first_chunk)
-                while True:
-                    chunk = resp.read(2 * 1024 * 1024)
-                    if not chunk:
-                        break
-                    f.write(chunk)
-        else:
+    cookie_jar = urllib.request.HTTPCookieProcessor()
+    opener = urllib.request.build_opener(cookie_jar)
+
+    curr_url = url
+    for step in range(5):
+        h = dict(headers, Referer=curr_url)
+        req = urllib.request.Request(curr_url, headers=h)
+        with opener.open(req) as resp:
+            content_type = resp.headers.get("Content-Type", "").lower()
+            first_chunk = resp.read(4096)
+            if first_chunk.startswith(b"PK\x03\x04") or "package-archive" in content_type or "octet-stream" in content_type or "application/zip" in content_type:
+                with open(dest_file, "wb") as f:
+                    f.write(first_chunk)
+                    while True:
+                        chunk = resp.read(2 * 1024 * 1024)
+                        if not chunk:
+                            break
+                        f.write(chunk)
+                
+                sz = os.path.getsize(dest_file) / (1024 * 1024)
+                if sz > 2.0:
+                    print(f"✅ Downloaded verified APK package: {sz:.2f} MB")
+                    return
+                else:
+                    print(f"Notice: Downloaded stream too small ({sz:.2f} MB)")
+
+            # Parse HTML to find next download link
             html = (first_chunk + resp.read()).decode("utf-8", errors="ignore")
-            matches = re.findall(r'href=[\"\']([^\"\']*download\.php[^\"\']*)[\"\']', html)
+            matches = re.findall(r'href=[\"\']([^\"\']*(?:download\.php|downloading|wp-content)[^\"\']*)[\"\']', html)
             if not matches:
-                matches = re.findall(r'href=[\"\']([^\"\']*(?:download|downloading)[^\"\']*)[\"\']', html)
+                matches = re.findall(r'href=[\"\']([^\"\']*(?:apk-download\/download)[^\"\']*)[\"\']', html)
             if not matches:
-                raise Exception(f"Failed to parse direct download link from: {url}")
+                raise Exception(f"Failed to find download link on page: {curr_url}")
             
             sub_link = matches[0].replace("&amp;", "&")
-            direct_url = "https://www.apkmirror.com" + sub_link if sub_link.startswith("/") else sub_link
-            sub_headers = dict(headers, Referer=url)
-            sub_req = urllib.request.Request(direct_url, headers=sub_headers)
-            with urllib.request.urlopen(sub_req) as sub_resp, open(dest_file, "wb") as out_f:
-                while True:
-                    chunk = sub_resp.read(2 * 1024 * 1024)
-                    if not chunk:
-                        break
-                    out_f.write(chunk)
+            curr_url = "https://www.apkmirror.com" + sub_link if sub_link.startswith("/") else sub_link
+            print(f"Following download token (hop {step+1}): {curr_url[:80]}...")
 
-    if not os.path.exists(dest_file):
-        raise Exception(f"File not saved: {dest_file}")
-    sz = os.path.getsize(dest_file) / (1024 * 1024)
-    if sz < 2.0:
-        raise Exception(f"Downloaded file is not a valid APK ({sz:.2f} MB)")
-    print(f"✅ Downloaded verified APK package: {sz:.2f} MB")
+    raise Exception(f"Failed to download APK after 5 hops for {url}")
 
 def main():
     raw_inputs_json = os.environ.get("GITHUB_INPUTS", "{}")
@@ -120,15 +121,15 @@ def main():
     if os.path.exists("config"):
         for f in os.listdir("config"):
             if f.startswith("options-") and f.endswith(".json"):
-                slug = f.replace("options-", "").replace(".json", "")
-                if slug == "youtube":
+                slug_name = f.replace("options-", "").replace(".json", "")
+                if slug_name == "youtube":
                     available_apps["YouTube"] = f
-                elif slug == "ytmusic":
+                elif slug_name == "ytmusic":
                     available_apps["YouTube-Music"] = f
-                elif slug == "reddit":
+                elif slug_name == "reddit":
                     available_apps["Reddit"] = f
                 else:
-                    available_apps[slug.capitalize()] = f
+                    available_apps[slug_name.capitalize()] = f
 
     if app_choice.startswith("All"):
         targets = list(available_apps.keys())
@@ -166,7 +167,7 @@ def main():
             if arch != "all":
                 args.append(f"--striplibs={arch}")
 
-            slug = app.lower().replace("-", "")
+            slug = "ytmusic" if "music" in app.lower() else ("youtube" if "youtube" in app.lower() else app.lower().replace("-", ""))
             opts_json_file = f"config/options-{slug}.json"
             applied_patch_count = 0
             forced_enables = set()
