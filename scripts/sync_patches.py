@@ -7,6 +7,23 @@ os.makedirs("config", exist_ok=True)
 cli_jar = "build-tools/morphe-desktop.jar"
 patches_mpp = "build-tools/patches.mpp"
 
+KNOWN_NAMES = {
+    "com.google.android.youtube": ("YouTube", "youtube"),
+    "com.google.android.apps.youtube.music": ("YouTube Music", "ytmusic"),
+    "com.reddit.frontpage": ("Reddit", "reddit"),
+    "com.twitter.android": ("Twitter", "twitter"),
+    "com.instagram.android": ("Instagram", "instagram"),
+    "tv.twitch.android.app": ("Twitch", "twitch"),
+    "com.spotify.music": ("Spotify", "spotify")
+}
+
+def discover_packages():
+    cmd = ["java", "-jar", cli_jar, "list-patches", f"--patches={patches_mpp}", "-p"]
+    res = subprocess.run(cmd, capture_output=True, text=True)
+    raw = res.stdout + res.stderr
+    pkgs = set(re.findall(r"Package name:\s*([a-zA-Z0-9._]+)", raw))
+    return sorted(pkgs)
+
 def get_patches(package_name):
     cmd = ["java", "-jar", cli_jar, "list-patches", f"--patches={patches_mpp}", f"-f={package_name}"]
     res = subprocess.run(cmd, capture_output=True, text=True)
@@ -25,11 +42,6 @@ def get_patches(package_name):
                 "enabled": enabled_m.group(1).strip() == "true"
             })
     return patches
-
-print("Fetching patches from bundle...")
-yt_patches = get_patches("com.google.android.youtube")
-ytm_patches = get_patches("com.google.android.apps.youtube.music")
-reddit_patches = get_patches("com.reddit.frontpage")
 
 def write_config_file(patches, app_name, package_name, out_file):
     lines = [
@@ -52,10 +64,21 @@ def write_config_file(patches, app_name, package_name, out_file):
             lines.append(f"# {p['name']}\n")
     with open(out_file, "w") as f:
         f.write("\n".join(lines))
-    print(f"Updated {out_file} with numbering ({len(patches)} patches)")
+    print(f"✅ Generated {out_file} with numbering ({len(patches)} patches)")
 
-write_config_file(yt_patches, "YouTube", "com.google.android.youtube", "config/youtube-patches.txt")
-write_config_file(ytm_patches, "YouTube Music", "com.google.android.apps.youtube.music", "config/ytmusic-patches.txt")
-write_config_file(reddit_patches, "Reddit", "com.reddit.frontpage", "config/reddit-patches.txt")
+print("Scanning all supported apps in Morphe Patches bundle...")
+packages = discover_packages()
+print(f"Found {len(packages)} supported apps: {packages}")
 
-print("All patch config files successfully updated with numbering!")
+for pkg in packages:
+    if pkg in KNOWN_NAMES:
+        app_name, slug = KNOWN_NAMES[pkg]
+    else:
+        app_name = pkg.split(".")[-1].capitalize()
+        slug = app_name.lower()
+    
+    out_file = f"config/{slug}-patches.txt"
+    patches = get_patches(pkg)
+    write_config_file(patches, app_name, pkg, out_file)
+
+print("All supported apps synced and numbered successfully!")

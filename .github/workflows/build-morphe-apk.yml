@@ -6,10 +6,10 @@ on:
       app_type:
         description: '📱 1. Kaunsa app patch karna hai?'
         required: true
-        default: 'All (YouTube + YouTube-Music)'
+        default: 'All (YouTube + YouTube-Music + Reddit)'
         type: choice
         options:
-          - 'All (YouTube + YouTube-Music)'
+          - 'All (YouTube + YouTube-Music + Reddit)'
           - 'YouTube'
           - 'YouTube-Music'
           - 'Reddit'
@@ -64,6 +64,18 @@ on:
 
       ytm_enable_disable_updates:
         description: '🎵 [YT Music] Disable Play Store Auto-Updates'
+        required: true
+        default: false
+        type: boolean
+
+      reddit_enable_clone_app:
+        description: '🟠 [Reddit] Clone app (Install as separate second app)'
+        required: true
+        default: false
+        type: boolean
+
+      reddit_enable_change_installer:
+        description: '🟠 [Reddit] Spoof Installer (Play Store Source Spoofing)'
         required: true
         default: false
         type: boolean
@@ -202,9 +214,12 @@ jobs:
           ytm_installer = "${{ github.event.inputs.ytm_enable_change_installer }}" == "true"
           ytm_updates = "${{ github.event.inputs.ytm_enable_disable_updates }}" == "true"
 
+          reddit_clone = "${{ github.event.inputs.reddit_enable_clone_app }}" == "true"
+          reddit_installer = "${{ github.event.inputs.reddit_enable_change_installer }}" == "true"
+
           targets = []
-          if app_choice == "All (YouTube + YouTube-Music)":
-              targets = ["YouTube", "YouTube-Music"]
+          if app_choice == "All (YouTube + YouTube-Music + Reddit)":
+              targets = ["YouTube", "YouTube-Music", "Reddit"]
           else:
               targets = [app_choice]
 
@@ -274,7 +289,7 @@ jobs:
               if arch != "all":
                   args.append(f"--striplibs={arch}")
 
-              # 1. READ ALL PATCHES STRICTLY FROM CONFIG FILE (config/*.txt)
+              # 1. READ ALL PATCHES STRICTLY FROM APP-SPECIFIC CONFIG FILE (config/*.txt)
               cfg_file = cfg_map.get(app)
               enabled_patches = set()
               disabled_patches = set()
@@ -319,7 +334,15 @@ jobs:
                       enabled_patches.add("Disable Play Store updates")
                       disabled_patches.discard("Disable Play Store updates")
 
-              # Root mode
+              elif app == "Reddit":
+                  if reddit_clone:
+                      enabled_patches.add("Clone app")
+                      disabled_patches.discard("Clone app")
+                  if reddit_installer:
+                      enabled_patches.add("Change installer source")
+                      disabled_patches.discard("Change installer source")
+
+              # Root mode handling
               if install_type == "Root (without GmsCore)":
                   disabled_patches.add("GmsCore support")
                   enabled_patches.discard("GmsCore support")
