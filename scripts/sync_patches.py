@@ -267,10 +267,7 @@ jobs:
 
       - name: Process, Patch and Sign Target APK(s)
         env:
-          INPUT_APP_TYPE: ${{{{ github.event.inputs.app_type }}}}
-          INPUT_CUSTOM_APK_URL: ${{{{ github.event.inputs.custom_apk_url }}}}
-          INPUT_INSTALL_TYPE: ${{{{ github.event.inputs.install_type }}}}
-          INPUT_ARCHITECTURE: ${{{{ github.event.inputs.architecture }}}}
+          GITHUB_INPUTS: ${{{{ toJson(github.event.inputs) }}}}
         run: |
           python3 scripts/build_apk.py
           echo "Generated Files in output directory:"

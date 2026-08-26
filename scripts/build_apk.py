@@ -98,10 +98,16 @@ def download_apk(url, dest_file):
     print(f"✅ Downloaded verified APK package: {sz:.2f} MB")
 
 def main():
-    app_choice = os.environ.get("INPUT_APP_TYPE", "All")
-    custom_url_input = os.environ.get("INPUT_CUSTOM_APK_URL", "").strip()
-    install_type = os.environ.get("INPUT_INSTALL_TYPE", "Non-Root (with GmsCore)")
-    arch = os.environ.get("INPUT_ARCHITECTURE", "all")
+    raw_inputs_json = os.environ.get("GITHUB_INPUTS", "{}")
+    try:
+        workflow_inputs = json.loads(raw_inputs_json)
+    except Exception:
+        workflow_inputs = {}
+
+    app_choice = workflow_inputs.get("app_type", os.environ.get("INPUT_APP_TYPE", "All"))
+    custom_url_input = workflow_inputs.get("custom_apk_url", os.environ.get("INPUT_CUSTOM_APK_URL", "")).strip()
+    install_type = workflow_inputs.get("install_type", os.environ.get("INPUT_INSTALL_TYPE", "Non-Root (with GmsCore)"))
+    arch = workflow_inputs.get("architecture", os.environ.get("INPUT_ARCHITECTURE", "all"))
 
     default_urls = {
         "YouTube": os.environ.get("DEFAULT_YOUTUBE_URL", "https://www.apkmirror.com/apk/google-inc/youtube/youtube-21-04-223-release/youtube-21-04-223-android-apk-download/download/?key=b87ce717c47f3920c139dae8e15df2ba744764e9&forcebaseapk=true"),
@@ -163,35 +169,61 @@ def main():
             slug = app.lower().replace("-", "")
             opts_json_file = f"config/options-{slug}.json"
             applied_patch_count = 0
+            forced_enables = set()
+            forced_disables = set()
 
             # Load options JSON file
             if os.path.exists(opts_json_file):
                 with open(opts_json_file, "r") as f:
                     options_data = json.load(f)
 
-            patches_dict = options_data[0].get("patches", {})
+                patches_dict = options_data[0].get("patches", {})
 
-            # 1. Apply UI popup toggles for disabled patches if checked
-            for key, val in os.environ.items():
-                if key.startswith(f"INPUT_ENABLE_{slug.upper()}_") and val == "true":
-                    for p_name in patches_dict:
-                        if re.sub(r'[^a-zA-Z0-9_]', '_', p_name.lower()) in key.lower():
-                            patches_dict[p_name]["enabled"] = True
-                            print(f"[{app}] Enabled via popup toggle: {p_name}")
+                # 1. Apply UI popup toggles for disabled patches if checked
+                for key, val in workflow_inputs.items():
+                    val_str = str(val).lower()
+                    if val_str == "true":
+                        key_clean = key.lower().replace("input_", "").replace("enable_", "")
+                        # e.g. youtube_clone_app or ytmusic_clone_app
+                        if key_clean.startswith(f"{slug}_"):
+                            p_key_part = key_clean[len(slug)+1:]
+                            for p_name in patches_dict:
+                                p_slug = re.sub(r'[^a-zA-Z0-9_]', '_', p_name.lower())
+                                if p_slug == p_key_part or p_key_part in p_slug:
+                                    patches_dict[p_name]["enabled"] = True
+                                    forced_enables.add(p_name)
+                                    print(f"✅ [{app}] ENABLED via Popup Checkbox: {p_name}")
 
-            # 2. Apply Root mode handling
-            if install_type == "Root (without GmsCore)":
-                if "GmsCore support" in patches_dict:
-                    patches_dict["GmsCore support"]["enabled"] = False
+                # 2. Apply Root mode handling
+                if install_type == "Root (without GmsCore)":
+                    if "GmsCore support" in patches_dict:
+                        patches_dict["GmsCore support"]["enabled"] = False
+                        forced_disables.add("GmsCore support")
 
-            runtime_opts_file = f"/tmp/runtime_options_{slug}.json"
-            options_data[0]["patches"] = patches_dict
-            with open(runtime_opts_file, "w") as f:
-                json.dump(options_data, f, indent=4)
+                # Force -e and -d flags explicitly to CLI
+                for p_name, p_obj in patches_dict.items():
+                    if p_obj.get("enabled", True):
+                        forced_enables.add(p_name)
+                    else:
+                        forced_disables.add(p_name)
 
-            args.append(f"--options-file={runtime_opts_file}")
-            applied_patch_count = sum(1 for p in patches_dict.values() if p.get("enabled", True))
-            print(f"✅ Loaded Options JSON: {opts_json_file} ({applied_patch_count} patches enabled)")
+                # Remove conflicts
+                for e in forced_enables:
+                    forced_disables.discard(e)
+
+                runtime_opts_file = f"/tmp/runtime_options_{slug}.json"
+                options_data[0]["patches"] = patches_dict
+                with open(runtime_opts_file, "w") as f:
+                    json.dump(options_data, f, indent=4)
+
+                args.append(f"--options-file={runtime_opts_file}")
+                for e in sorted(forced_enables):
+                    args.extend(["-e", e])
+                for d in sorted(forced_disables):
+                    args.extend(["-d", d])
+
+                applied_patch_count = len(forced_enables)
+                print(f"✅ Loaded Options JSON: {opts_json_file} ({applied_patch_count} patches enabled, {len(forced_disables)} disabled)")
 
             args.append(input_apk)
             print(f"Executing patcher for {app}...")
