@@ -49,80 +49,53 @@ def resolve_custom_urls(custom_input, targets, default_urls):
 
     return app_url_map
 
-def download_with_curl(url, dest_file):
-    user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
-    cmd = [
-        "curl", "-sSL",
-        "-A", user_agent,
-        "-H", "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,application/vnd.android.package-archive,*/*;q=0.8",
-        "-H", "Accept-Language: en-US,en;q=0.5",
-        "-e", "https://www.google.com/",
-        "--retry", "3",
-        "-o", dest_file,
-        url
-    ]
-    res = subprocess.run(cmd)
-    if res.returncode == 0 and os.path.exists(dest_file):
-        with open(dest_file, "rb") as f:
-            header = f.read(4)
-        if header.startswith(b"PK\x03\x04"):
-            sz = os.path.getsize(dest_file) / (1024 * 1024)
-            if sz > 2.0:
-                print(f"✅ curl downloaded verified APK ({sz:.2f} MB)")
-                return True
-    return False
-
-def smart_download_apk(initial_url, dest_file):
-    print(f"Downloading APK from: {initial_url}")
-    
-    candidate_urls = [initial_url]
-    if "apkmirror.com" in initial_url and "forcebaseapk" not in initial_url:
-        candidate_urls.append(initial_url.rstrip("/") + "/download/?forcebaseapk=true")
-
+def download_apk(url, dest_file):
+    print(f"Downloading from URL: {url}")
     user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
     headers = {
         "User-Agent": user_agent,
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.5"
+        "Accept-Language": "en-US,en;q=0.5",
+        "Referer": url
     }
 
-    for c_url in candidate_urls:
-        print(f"Trying download endpoint: {c_url[:80]}...")
-        
-        # 1. Try curl
-        if download_with_curl(c_url, dest_file):
-            return
+    req = urllib.request.Request(url, headers=headers)
+    with urllib.request.urlopen(req) as resp:
+        content_type = resp.headers.get("Content-Type", "").lower()
+        first_chunk = resp.read(4096)
+        if first_chunk.startswith(b"PK\x03\x04") or "package-archive" in content_type or "octet-stream" in content_type or "application/zip" in content_type:
+            with open(dest_file, "wb") as f:
+                f.write(first_chunk)
+                while True:
+                    chunk = resp.read(2 * 1024 * 1024)
+                    if not chunk:
+                        break
+                    f.write(chunk)
+        else:
+            html = (first_chunk + resp.read()).decode("utf-8", errors="ignore")
+            matches = re.findall(r'href=[\"\']([^\"\']*download\.php[^\"\']*)[\"\']', html)
+            if not matches:
+                matches = re.findall(r'href=[\"\']([^\"\']*(?:download|downloading)[^\"\']*)[\"\']', html)
+            if not matches:
+                raise Exception(f"Failed to parse direct download link from: {url}")
+            
+            sub_link = matches[0].replace("&amp;", "&")
+            direct_url = "https://www.apkmirror.com" + sub_link if sub_link.startswith("/") else sub_link
+            sub_headers = dict(headers, Referer=url)
+            sub_req = urllib.request.Request(direct_url, headers=sub_headers)
+            with urllib.request.urlopen(sub_req) as sub_resp, open(dest_file, "wb") as out_f:
+                while True:
+                    chunk = sub_resp.read(2 * 1024 * 1024)
+                    if not chunk:
+                        break
+                    out_f.write(chunk)
 
-        # 2. Try urllib crawler
-        try:
-            req = urllib.request.Request(c_url, headers=headers)
-            with urllib.request.urlopen(req) as resp:
-                content_type = resp.headers.get("Content-Type", "").lower()
-                first_chunk = resp.read(4096)
-                if first_chunk.startswith(b"PK\x03\x04") or "package-archive" in content_type:
-                    with open(dest_file, "wb") as out_f:
-                        out_f.write(first_chunk)
-                        while True:
-                            chunk = resp.read(2 * 1024 * 1024)
-                            if not chunk: break
-                            out_f.write(chunk)
-                    
-                    sz = os.path.getsize(dest_file) / (1024 * 1024)
-                    if sz > 2.0:
-                        print(f"✅ Downloaded Genuine APK package ({sz:.2f} MB)")
-                        return
-
-                html = (first_chunk + resp.read()).decode("utf-8", errors="ignore")
-                matches = re.findall(r'href=[\"\']([^\"\']*(?:download\.php|downloading|wp-content)[^\"\']*)[\"\']', html)
-                if matches:
-                    sub_link = matches[0].replace("&amp;", "&")
-                    resolved_sub = "https://www.apkmirror.com" + sub_link if sub_link.startswith("/") else sub_link
-                    if download_with_curl(resolved_sub, dest_file):
-                        return
-        except Exception as e:
-            print(f"Notice ({e}), trying next option...")
-
-    raise Exception(f"Failed to obtain genuine APK binary for {initial_url}")
+    if not os.path.exists(dest_file):
+        raise Exception(f"File not saved: {dest_file}")
+    sz = os.path.getsize(dest_file) / (1024 * 1024)
+    if sz < 2.0:
+        raise Exception(f"Downloaded file is not a valid APK ({sz:.2f} MB)")
+    print(f"✅ Downloaded verified APK package: {sz:.2f} MB")
 
 def main():
     app_choice = os.environ.get("INPUT_APP_TYPE", "All")
@@ -176,7 +149,7 @@ def main():
             input_apk = f"input-{app}.apk"
             output_apk = f"output/Morphe-{app}.apk"
 
-            smart_download_apk(apk_url, input_apk)
+            download_apk(apk_url, input_apk)
             in_size = os.path.getsize(input_apk) / (1024*1024)
             print(f"✅ {app} stock APK ready: {in_size:.2f} MB")
 
@@ -196,29 +169,29 @@ def main():
                 with open(opts_json_file, "r") as f:
                     options_data = json.load(f)
 
-                patches_dict = options_data[0].get("patches", {})
+            patches_dict = options_data[0].get("patches", {})
 
-                # 1. Apply UI popup toggles for disabled patches if checked
-                for key, val in os.environ.items():
-                    if key.startswith(f"INPUT_ENABLE_{slug.upper()}_") and val == "true":
-                        for p_name in patches_dict:
-                            if re.sub(r'[^a-zA-Z0-9_]', '_', p_name.lower()) in key.lower():
-                                patches_dict[p_name]["enabled"] = True
-                                print(f"[{app}] Enabled via popup toggle: {p_name}")
+            # 1. Apply UI popup toggles for disabled patches if checked
+            for key, val in os.environ.items():
+                if key.startswith(f"INPUT_ENABLE_{slug.upper()}_") and val == "true":
+                    for p_name in patches_dict:
+                        if re.sub(r'[^a-zA-Z0-9_]', '_', p_name.lower()) in key.lower():
+                            patches_dict[p_name]["enabled"] = True
+                            print(f"[{app}] Enabled via popup toggle: {p_name}")
 
-                # 2. Apply Root mode handling
-                if install_type == "Root (without GmsCore)":
-                    if "GmsCore support" in patches_dict:
-                        patches_dict["GmsCore support"]["enabled"] = False
+            # 2. Apply Root mode handling
+            if install_type == "Root (without GmsCore)":
+                if "GmsCore support" in patches_dict:
+                    patches_dict["GmsCore support"]["enabled"] = False
 
-                runtime_opts_file = f"/tmp/runtime_options_{slug}.json"
-                options_data[0]["patches"] = patches_dict
-                with open(runtime_opts_file, "w") as f:
-                    json.dump(options_data, f, indent=4)
+            runtime_opts_file = f"/tmp/runtime_options_{slug}.json"
+            options_data[0]["patches"] = patches_dict
+            with open(runtime_opts_file, "w") as f:
+                json.dump(options_data, f, indent=4)
 
-                args.append(f"--options-file={runtime_opts_file}")
-                applied_patch_count = sum(1 for p in patches_dict.values() if p.get("enabled", True))
-                print(f"✅ Loaded Options JSON: {opts_json_file} ({applied_patch_count} patches enabled)")
+            args.append(f"--options-file={runtime_opts_file}")
+            applied_patch_count = sum(1 for p in patches_dict.values() if p.get("enabled", True))
+            print(f"✅ Loaded Options JSON: {opts_json_file} ({applied_patch_count} patches enabled)")
 
             args.append(input_apk)
             print(f"Executing patcher for {app}...")
