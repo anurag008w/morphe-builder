@@ -1,73 +1,74 @@
 # ========================================================
 #  Morphe Patches for Reddit (com.reddit.frontpage)
+#  Total Patches: 22
 # ========================================================
 # Instructions:
 # - Jo patch chahiye, use waise hi rehne dein (ENABLED).
 # - Jo patch NAHI chahiye, us line ke aage # laga dein (DISABLED).
 # ========================================================
 
-# [DISABLED] Changes the app package name to allow installing the same app multiple times. By default ".morphe" is appended to the package name. Each cloned install must use a unique package name. Cloning does not work with all apps and using this patch may cause app crashes or other unexpected behavior.
+# [1/22] [DISABLED] Changes the app package name to allow installing the same app multiple times. By default ".morphe" is appended to the package name. Each cloned install must use a unique package name. Cloning does not work with all apps and using this patch may cause app crashes or other unexpected behavior.
 # Clone app
 
-# [DISABLED] Spoofs the installer source so the app appears to be installed from an app store.
+# [2/22] [DISABLED] Spoofs the installer source so the app appears to be installed from an app store.
 # Change installer source
 
-# [DISABLED] Overrides certificate pinning, allowing to inspect traffic via a proxy.
+# [3/22] [DISABLED] Overrides certificate pinning, allowing to inspect traffic via a proxy.
 # Override certificate pinning
 
-# [DISABLED] Disables Play Store updates by setting the version code to the maximum allowed. This patch may cause unexpected issues with some apps and does not work if the app is installed by root mounting
+# [4/22] [DISABLED] Disables Play Store updates by setting the version code to the maximum allowed. This patch may cause unexpected issues with some apps and does not work if the app is installed by root mounting
 # Disable Play Store updates
 
-# [ENABLED] Adds options to hide ads.
+# [5/22] [ENABLED] Adds options to hide ads.
 Hide ads
 
-# [ENABLED] Adds an option to replace Reddit Sans / Roboto with a custom TTF or OTF font file at runtime.
+# [6/22] [ENABLED] Adds an option to replace Reddit Sans / Roboto with a custom TTF or OTF font file at runtime.
 Custom font
 
-# [ENABLED] Adds an option that renders Reddit with the device system font instead of Reddit Sans / Roboto.
+# [7/22] [ENABLED] Adds an option that renders Reddit with the device system font instead of Reddit Sans / Roboto.
 Force system font
 
-# [ENABLED] Adds an option to hide Ask button in the search bar.
+# [8/22] [ENABLED] Adds an option to hide Ask button in the search bar.
 Hide Ask button
 
-# [DISABLED] Changes the Reddit app name to the name specified in patch options.
+# [9/22] [DISABLED] Changes the Reddit app name to the name specified in patch options.
 # Custom branding name for Reddit
 
-# [ENABLED] Adds an option to hide the related or suggested communities shelf in subreddits.
+# [10/22] [ENABLED] Adds an option to hide the related or suggested communities shelf in subreddits.
 Hide communities shelf
 
-# [ENABLED] Adds an option to disable the modern home UI. This patch works with Reddit 2026.24.0 and earlier.
+# [11/22] [ENABLED] Adds an option to disable the modern home UI. This patch works with Reddit 2026.24.0 and earlier.
 Disable modern home
 
-# [ENABLED] Adds options to hide buttons in the navigation bar.
+# [12/22] [ENABLED] Adds options to hide buttons in the navigation bar.
 Hide navigation buttons
 
-# [ENABLED] Adds an option to disable the popup that appears when taking a screenshot.
+# [13/22] [ENABLED] Adds an option to disable the popup that appears when taking a screenshot.
 Disable screenshot popup
 
-# [DISABLED] Permanently hides the Reddit search in the contextual menu. This patch does not work with root mounting
+# [14/22] [DISABLED] Permanently hides the Reddit search in the contextual menu. This patch does not work with root mounting
 # Hide Reddit search
 
-# [ENABLED] Adds options to hide the sidebar components.
+# [15/22] [ENABLED] Adds options to hide the sidebar components.
 Hide sidebar components
 
-# [ENABLED] Adds options to remove the NSFW community warning and notifications suggestion dialogs by dismissing them automatically.
+# [16/22] [ENABLED] Adds options to remove the NSFW community warning and notifications suggestion dialogs by dismissing them automatically.
 Remove subreddit dialog
 
-# [ENABLED] Adds an option to hide the Trending shelves from feed and search suggestions.
+# [17/22] [ENABLED] Adds an option to hide the Trending shelves from feed and search suggestions.
 Hide Trending shelves
 
-# [ENABLED] Adds an option to show the view count of Posts.
+# [18/22] [ENABLED] Adds an option to show the view count of Posts.
 Show view count
 
-# [ENABLED] Spoofs the signature of the app to fix notification issues.
+# [19/22] [ENABLED] Spoofs the signature of the app to fix notification issues.
 Spoof signature
 
-# [ENABLED] Adds an option to skip over redirection URLs in external links.
+# [20/22] [ENABLED] Adds an option to skip over redirection URLs in external links.
 Open links directly
 
-# [ENABLED] Adds an option to always open links in your browser instead of with the in-app-browser.
+# [21/22] [ENABLED] Adds an option to always open links in your browser instead of with the in-app-browser.
 Open links externally
 
-# [ENABLED] Adds an option to sanitize sharing links by removing tracking query parameters.
+# [22/22] [ENABLED] Adds an option to sanitize sharing links by removing tracking query parameters.
 Sanitize sharing links

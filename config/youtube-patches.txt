@@ -1,244 +1,245 @@
 # ========================================================
 #  Morphe Patches for YouTube (com.google.android.youtube)
+#  Total Patches: 79
 # ========================================================
 # Instructions:
 # - Jo patch chahiye, use waise hi rehne dein (ENABLED).
 # - Jo patch NAHI chahiye, us line ke aage # laga dein (DISABLED).
 # ========================================================
 
-# [DISABLED] Changes the app package name to allow installing the same app multiple times. By default ".morphe" is appended to the package name. Each cloned install must use a unique package name. Cloning does not work with all apps and using this patch may cause app crashes or other unexpected behavior.
+# [1/79] [DISABLED] Changes the app package name to allow installing the same app multiple times. By default ".morphe" is appended to the package name. Each cloned install must use a unique package name. Cloning does not work with all apps and using this patch may cause app crashes or other unexpected behavior.
 # Clone app
 
-# [DISABLED] Spoofs the installer source so the app appears to be installed from an app store.
+# [2/79] [DISABLED] Spoofs the installer source so the app appears to be installed from an app store.
 # Change installer source
 
-# [DISABLED] Overrides certificate pinning, allowing to inspect traffic via a proxy.
+# [3/79] [DISABLED] Overrides certificate pinning, allowing to inspect traffic via a proxy.
 # Override certificate pinning
 
-# [DISABLED] Disables Play Store updates by setting the version code to the maximum allowed. This patch may cause unexpected issues with some apps and does not work if the app is installed by root mounting
+# [4/79] [DISABLED] Disables Play Store updates by setting the version code to the maximum allowed. This patch may cause unexpected issues with some apps and does not work if the app is installed by root mounting
 # Disable Play Store updates
 
-# [ENABLED] Adds options to hide general ads, Premium promotions and video ads.
+# [5/79] [ENABLED] Adds options to hide general ads, Premium promotions and video ads.
 Hide ads
 
-# [ENABLED] Adds options to display buttons in the video player to copy video links.
+# [6/79] [ENABLED] Adds options to display buttons in the video player to copy video links.
 Copy video link
 
-# [ENABLED] Adds an option to remove the dialog that appears when opening a video that has been age-restricted by accepting it automatically. This does not bypass the age restriction.
+# [7/79] [ENABLED] Adds an option to remove the dialog that appears when opening a video that has been age-restricted by accepting it automatically. This does not bypass the age restriction.
 Remove viewer discretion dialog
 
-# [ENABLED] Adds an option to disable player double tap gestures.
+# [8/79] [ENABLED] Adds an option to disable player double tap gestures.
 Disable double tap actions
 
-# [ENABLED] Adds additional double-tap to seek values to the YouTube settings menu.
+# [9/79] [ENABLED] Adds additional double-tap to seek values to the YouTube settings menu.
 Double tap to seek
 
-# [ENABLED] Adds support to download videos with an external downloader app using the in-app download button or a video player action button.
+# [10/79] [ENABLED] Adds support to download videos with an external downloader app using the in-app download button or a video player action button.
 Downloads
 
-# [ENABLED] Adds an option to disable haptic feedback in the player for various actions.
+# [11/79] [ENABLED] Adds an option to disable haptic feedback in the player for various actions.
 Disable haptic feedback
 
-# [ENABLED] Adds an option to loop videos and display loop video button in the video player.
+# [12/79] [ENABLED] Adds an option to loop videos and display loop video button in the video player.
 Loop video
 
-# [ENABLED] Adds an option to play all the videos from a channel and to display play all button in the video player.
+# [13/79] [ENABLED] Adds an option to play all the videos from a channel and to display play all button in the video player.
 Play all
 
-# [ENABLED] Adds an option to display reload video button in the video player.
+# [14/79] [ENABLED] Adds an option to display reload video button in the video player.
 Reload video
 
-# [ENABLED] Adds an option to display save to watch later button in the video player.
+# [15/79] [ENABLED] Adds an option to display save to watch later button in the video player.
 Save to watch later
 
-# [ENABLED] Adds options to show old seekbar thumbnails, disable precise seeking when swiping up on the seekbar, slide to seek instead of playing at 2x speed when pressing and holding, tapping the player seekbar to seek, hiding the video player seekbar, enabling seeking in livestreams, and expanding the livestream DVR duration.
+# [16/79] [ENABLED] Adds options to show old seekbar thumbnails, disable precise seeking when swiping up on the seekbar, slide to seek instead of playing at 2x speed when pressing and holding, tapping the player seekbar to seek, hiding the video player seekbar, enabling seeking in livestreams, and expanding the livestream DVR duration.
 Seekbar
 
-# [ENABLED] Adds options to enable and configure volume and brightness swipe controls.
+# [17/79] [ENABLED] Adds options to enable and configure volume and brightness swipe controls.
 Swipe controls
 
-# [ENABLED] Adds options to change the app icon and app name. Branding cannot be changed for mounted (root) installations.
+# [18/79] [ENABLED] Adds options to change the app icon and app name. Branding cannot be changed for mounted (root) installations.
 Custom branding
 
-# [ENABLED] Adds an option to change the header logo in the top left corner of the app.
+# [19/79] [ENABLED] Adds an option to change the header logo in the top left corner of the app.
 Change header
 
-# [ENABLED] Adds options to hide video action buttons in fullscreen and portrait modes.
+# [20/79] [ENABLED] Adds options to hide video action buttons in fullscreen and portrait modes.
 Hide video action buttons
 
-# [ENABLED] Adds options to hide and change the bottom navigation bar (such as the Shorts button)  and the upper navigation toolbar.
+# [21/79] [ENABLED] Adds options to hide and change the bottom navigation bar (such as the Shorts button)  and the upper navigation toolbar.
 Navigation bar
 
-# [ENABLED] Adds options to hide the player Cast, Autoplay, Captions, Previous & Next buttons, and the player control buttons background.
+# [22/79] [ENABLED] Adds options to hide the player Cast, Autoplay, Captions, Previous & Next buttons, and the player control buttons background.
 Hide player overlay buttons
 
-# [ENABLED] Adds an option to disable captions from being automatically enabled or to set caption cookies.
+# [23/79] [ENABLED] Adds an option to disable captions from being automatically enabled or to set caption cookies.
 Captions
 
-# [ENABLED] Adds an option to disable server side layout updates and use an older UI.
+# [24/79] [ENABLED] Adds an option to disable server side layout updates and use an older UI.
 Disable layout updates
 
-# [ENABLED] Overrides the feed flyout 'Play next in queue' with the Morphe video queue.
+# [25/79] [ENABLED] Overrides the feed flyout 'Play next in queue' with the Morphe video queue.
 Add to queue
 
-# [ENABLED] Adds an option to change the UI appearance to a phone, tablet, or automotive device.
+# [26/79] [ENABLED] Adds an option to change the UI appearance to a phone, tablet, or automotive device.
 Change form factor
 
-# [ENABLED] Adds options to bypass power saving restrictions for Ambient mode and disable it entirely or in fullscreen.
+# [27/79] [ENABLED] Adds options to bypass power saving restrictions for Ambient mode and disable it entirely or in fullscreen.
 Ambient mode
 
-# [ENABLED] Adds an option to hide the autoplay preview at the end of videos.
+# [28/79] [ENABLED] Adds an option to hide the autoplay preview at the end of videos.
 Hide autoplay preview
 
-# [ENABLED] Adds an option to hide suggested video cards at the end of videos.
+# [29/79] [ENABLED] Adds an option to hide suggested video cards at the end of videos.
 Hide end screen cards
 
-# [ENABLED] Adds an option to hide the suggested video at the end of videos.
+# [30/79] [ENABLED] Adds an option to hide the suggested video at the end of videos.
 Hide end screen suggested video
 
-# [ENABLED] Adds options to hide general layout components.
+# [31/79] [ENABLED] Adds options to hide general layout components.
 Hide layout components
 
-# [ENABLED] Adds an option to hide info cards that creators add in the video player.
+# [32/79] [ENABLED] Adds an option to hide info cards that creators add in the video player.
 Hide info cards
 
-# [ENABLED] Adds options to hide menu components that appear when pressing the gear icon in the video player.
+# [33/79] [ENABLED] Adds options to hide menu components that appear when pressing the gear icon in the video player.
 Hide player flyout menu components
 
-# [ENABLED] Adds an option to disable panels (such as live chat) from opening automatically.
+# [34/79] [ENABLED] Adds an option to disable panels (such as live chat) from opening automatically.
 Disable player popup panels
 
-# [ENABLED] Adds an option to hide the related video overlay shown when swiping up in fullscreen.
+# [35/79] [ENABLED] Adds an option to hide the related video overlay shown when swiping up in fullscreen.
 Hide related video overlay
 
-# [ENABLED] Adds options to hide related videos.
+# [36/79] [ENABLED] Adds options to hide related videos.
 Hide related videos
 
-# [ENABLED] Adds an option to disable rolling number animations of video view count, user likes, and upload time.
+# [37/79] [ENABLED] Adds an option to disable rolling number animations of video view count, user likes, and upload time.
 Disable rolling number animations
 
-# [ENABLED] Adds an option to hide items on the standard YouTube settings screen by their visible name.
+# [38/79] [ENABLED] Adds an option to hide items on the standard YouTube settings screen by their visible name.
 Settings menu filter
 
-# [ENABLED] Adds options to hide components related to Shorts.
+# [39/79] [ENABLED] Adds options to hide components related to Shorts.
 Hide Shorts components
 
-# [ENABLED] Adds options to disable the popups asking to sign into or connect to a TV on the same local network.
+# [40/79] [ENABLED] Adds options to disable the popups asking to sign into or connect to a TV on the same local network.
 Disable sign in to TV popup
 
-# [ENABLED] Adds an option to hide the timestamp in the bottom left of the video player.
+# [41/79] [ENABLED] Adds an option to hide the timestamp in the bottom left of the video player.
 Hide timestamp
 
-# [ENABLED] Adds an option to prevent a channel's current live video from opening when tapping its avatar.
+# [42/79] [ENABLED] Adds an option to prevent a channel's current live video from opening when tapping its avatar.
 Open channel of live avatar
 
-# [ENABLED] Adds options to change the in-app minimized player. Patching 21.28.206 and lower has more miniplayer types to choose from.
+# [43/79] [ENABLED] Adds options to change the in-app minimized player. Patching 21.28.206 and lower has more miniplayer types to choose from.
 Miniplayer
 
-# [ENABLED] Overrides YouTube Music buttons to open Morphe Music or any compatible third-party client.
+# [44/79] [ENABLED] Overrides YouTube Music buttons to open Morphe Music or any compatible third-party client.
 Override YouTube Music buttons
 
-# [ENABLED] Adds the 'Playback in feeds' setting of YouTube to the Morphe settings, where it is always available even if YouTube hides it.
+# [45/79] [ENABLED] Adds the 'Playback in feeds' setting of YouTube to the Morphe settings, where it is always available even if YouTube hides it.
 Playback in feeds
 
-# [ENABLED] Adds options to selectively disable gestures for entering and exiting fullscreen mode.
+# [46/79] [ENABLED] Adds options to selectively disable gestures for entering and exiting fullscreen mode.
 Disable fullscreen gestures
 
-# [ENABLED] Adds options to automatically exit fullscreen mode when a video reaches the end.
+# [47/79] [ENABLED] Adds options to automatically exit fullscreen mode when a video reaches the end.
 Exit fullscreen mode
 
-# [ENABLED] Adds options to automatically open videos in fullscreen portrait or landscape mode.
+# [48/79] [ENABLED] Adds options to automatically open videos in fullscreen portrait or landscape mode.
 Open videos fullscreen
 
-# [ENABLED] Adds an option to change the opacity of the video player background when player controls are visible.
+# [49/79] [ENABLED] Adds an option to change the opacity of the video player background when player controls are visible.
 Custom player overlay opacity
 
-# [ENABLED] Adds an option to show the dislike count of videos with Return YouTube Dislike.
+# [50/79] [ENABLED] Adds an option to show the dislike count of videos with Return YouTube Dislike.
 Return YouTube Dislike
 
-# [ENABLED] Adds an option to always open the system share sheet instead of the in-app share sheet.
+# [51/79] [ENABLED] Adds an option to always open the system share sheet instead of the in-app share sheet.
 Open system share sheet
 
-# [ENABLED] Adds options to automatically play the next Short.
+# [52/79] [ENABLED] Adds options to automatically play the next Short.
 Shorts autoplay
 
-# [ENABLED] Adds an option to disable Shorts from resuming on app startup when Shorts were last being watched.
+# [53/79] [ENABLED] Adds an option to disable Shorts from resuming on app startup when Shorts were last being watched.
 Disable Shorts resuming on startup
 
-# [ENABLED] Adds options to open Shorts in the regular video player.
+# [54/79] [ENABLED] Adds options to open Shorts in the regular video player.
 Open Shorts in regular player
 
-# [ENABLED] Adds options to enable and configure SponsorBlock, which can skip undesired video segments such as sponsored content.
+# [55/79] [ENABLED] Adds options to enable and configure SponsorBlock, which can skip undesired video segments such as sponsored content.
 SponsorBlock
 
-# [ENABLED] Adds an option to set which page the app opens in instead of the homepage.
+# [56/79] [ENABLED] Adds an option to set which page the app opens in instead of the homepage.
 Change start page
 
-# [ENABLED] Adds options for theming, and settings to change the app foreground and background colors.
+# [57/79] [ENABLED] Adds options for theming, and settings to change the app foreground and background colors.
 Theme
 
-# [ENABLED] Adds options to replace video thumbnails using the DeArrow API or image captures from the video.
+# [58/79] [ENABLED] Adds options to replace video thumbnails using the DeArrow API or image captures from the video.
 Alternative thumbnails
 
-# [ENABLED] Adds an option to use a different host for user avatar and channel images and can fix missing images that are blocked in some countries.
+# [59/79] [ENABLED] Adds an option to use a different host for user avatar and channel images and can fix missing images that are blocked in some countries.
 Bypass image region restrictions
 
-# [ENABLED] Adds a wide search bar to the top of the home and subscription feed.
+# [60/79] [ENABLED] Adds a wide search bar to the top of the home and subscription feed.
 Wide search bar
 
-# [ENABLED] Removes restrictions on background playback, including playing kids videos in the background.
+# [61/79] [ENABLED] Removes restrictions on background playback, including playing kids videos in the background.
 Remove background playback restrictions
 
-# [ENABLED] Adds options for debugging and exporting Morphe logs to the clipboard.
+# [62/79] [ENABLED] Adds options for debugging and exporting Morphe logs to the clipboard.
 Enable debugging
 
-# [ENABLED] Checks if the device DNS server is preventing user watch history from being saved.
+# [63/79] [ENABLED] Checks if the device DNS server is preventing user watch history from being saved.
 Check watch history domain name resolution
 
-# [ENABLED] Allows the app to work without root by using a different package name when patched using a GmsCore instead of Google Play Services.
+# [64/79] [ENABLED] Allows the app to work without root by using a different package name when patched using a GmsCore instead of Google Play Services.
 GmsCore support
 
-# [ENABLED] Adds an option to bypass redirects and open the original link directly.
+# [65/79] [ENABLED] Adds an option to bypass redirects and open the original link directly.
 Bypass link redirects
 
-# [ENABLED] Adds an option to always open links in your browser instead of with the in-app browser.
+# [66/79] [ENABLED] Adds an option to always open links in your browser instead of with the in-app browser.
 Open links externally
 
-# [ENABLED] Adds options to disable the seekbar and previous/next buttons in the media notification and headphone controls.
+# [67/79] [ENABLED] Adds options to disable the seekbar and previous/next buttons in the media notification and headphone controls.
 Media notification controls
 
-# [ENABLED] Removes the tracking query parameters from shared links.
+# [68/79] [ENABLED] Removes the tracking query parameters from shared links.
 Sanitize sharing links
 
-# [DISABLED] Adds settings to route supported network requests through an HTTP or HTTPS proxy.
+# [69/79] [DISABLED] Adds settings to route supported network requests through an HTTP or HTTPS proxy.
 # Network proxy
 
-# [ENABLED] Adds an option to disable QUIC (Quick UDP Internet Connections) network protocol.
+# [70/79] [ENABLED] Adds an option to disable QUIC (Quick UDP Internet Connections) network protocol.
 Disable QUIC protocol
 
-# [ENABLED] Adds options to spoof the client video streams to fix playback.
+# [71/79] [ENABLED] Adds options to spoof the client video streams to fix playback.
 Spoof video streams
 
-# [ENABLED] Adds an option to trick the app into thinking you are running an older version.
+# [72/79] [ENABLED] Adds an option to trick the app into thinking you are running an older version.
 Spoof app version
 
-# [ENABLED] Adds an option to spoof the device dimensions which can unlock higher video qualities.
+# [73/79] [ENABLED] Adds an option to spoof the device dimensions which can unlock higher video qualities.
 Spoof device dimensions
 
-# [ENABLED] Adds an option to disable DRC (Dynamic Range Compression) audio.
+# [74/79] [ENABLED] Adds an option to disable DRC (Dynamic Range Compression) audio.
 Disable DRC audio
 
-# [ENABLED] Adds an option to always use the original audio track.
+# [75/79] [ENABLED] Adds an option to always use the original audio track.
 Force original audio
 
-# [ENABLED] Adds options to disable HDR and VP9 codecs.
+# [76/79] [ENABLED] Adds options to disable HDR and VP9 codecs.
 Disable video codecs
 
-# [ENABLED] Adds options to set default video qualities and always use the advanced video quality menu.
+# [77/79] [ENABLED] Adds options to set default video qualities and always use the advanced video quality menu.
 Video quality
 
-# [ENABLED] Adds options to customize available playback speeds, set a default playback speed, and show a speed dialog button in the video player.
+# [78/79] [ENABLED] Adds options to customize available playback speeds, set a default playback speed, and show a speed dialog button in the video player.
 Playback speed
 
-# [ENABLED] Adds additional voice over languages using text-to-speech synchronized to the video playback.
+# [79/79] [ENABLED] Adds additional voice over languages using text-to-speech synchronized to the video playback.
 Voice over translation

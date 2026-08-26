@@ -1,136 +1,137 @@
 # ========================================================
 #  Morphe Patches for YouTube Music (com.google.android.apps.youtube.music)
+#  Total Patches: 43
 # ========================================================
 # Instructions:
 # - Jo patch chahiye, use waise hi rehne dein (ENABLED).
 # - Jo patch NAHI chahiye, us line ke aage # laga dein (DISABLED).
 # ========================================================
 
-# [DISABLED] Changes the app package name to allow installing the same app multiple times. By default ".morphe" is appended to the package name. Each cloned install must use a unique package name. Cloning does not work with all apps and using this patch may cause app crashes or other unexpected behavior.
+# [1/43] [DISABLED] Changes the app package name to allow installing the same app multiple times. By default ".morphe" is appended to the package name. Each cloned install must use a unique package name. Cloning does not work with all apps and using this patch may cause app crashes or other unexpected behavior.
 # Clone app
 
-# [DISABLED] Spoofs the installer source so the app appears to be installed from an app store.
+# [2/43] [DISABLED] Spoofs the installer source so the app appears to be installed from an app store.
 # Change installer source
 
-# [DISABLED] Overrides certificate pinning, allowing to inspect traffic via a proxy.
+# [3/43] [DISABLED] Overrides certificate pinning, allowing to inspect traffic via a proxy.
 # Override certificate pinning
 
-# [DISABLED] Disables Play Store updates by setting the version code to the maximum allowed. This patch may cause unexpected issues with some apps and does not work if the app is installed by root mounting
+# [4/43] [DISABLED] Disables Play Store updates by setting the version code to the maximum allowed. This patch may cause unexpected issues with some apps and does not work if the app is installed by root mounting
 # Disable Play Store updates
 
-# [ENABLED] Adds options to hide fullscreen ads, Premium promotions and video ads.
+# [5/43] [ENABLED] Adds options to hide fullscreen ads, Premium promotions and video ads.
 Hide ads
 
-# [ENABLED] Adds options to hide individual items from the player and queue flyout menus.
+# [6/43] [ENABLED] Adds options to hide individual items from the player and queue flyout menus.
 Hide flyout menu components
 
-# [ENABLED] Adds a true dual-player crossfade between consecutive tracks. Requires YouTube Music 9.00 or newer; on older versions the patch is a no-op.
+# [7/43] [ENABLED] Adds a true dual-player crossfade between consecutive tracks. Requires YouTube Music 9.00 or newer; on older versions the patch is a no-op.
 Crossfade
 
-# [ENABLED] Adds an option to remove the dialog that appears when opening a video that has been age-restricted by accepting it automatically. This does not bypass the age restriction.
+# [8/43] [ENABLED] Adds an option to remove the dialog that appears when opening a video that has been age-restricted by accepting it automatically. This does not bypass the age restriction.
 Remove viewer discretion dialog
 
-# [ENABLED] Adds an option to prevent skipping to the next track when the dislike button is pressed.
+# [9/43] [ENABLED] Adds an option to prevent skipping to the next track when the dislike button is pressed.
 Disable dislike redirection
 
-# [ENABLED] Adds support to download songs with an external downloader app using the in-app download button.
+# [10/43] [ENABLED] Adds support to download songs with an external downloader app using the in-app download button.
 Downloads
 
-# [ENABLED] Adds an option to remember the repeat state when playing a new track or playlist.
+# [11/43] [ENABLED] Adds an option to remember the repeat state when playing a new track or playlist.
 Remember repeat state
 
-# [ENABLED] Adds an option to remember the shuffle state when playing a new track or playlist.
+# [12/43] [ENABLED] Adds an option to remember the shuffle state when playing a new track or playlist.
 Remember shuffle state
 
-# [ENABLED] Adds options to add played tracks to Last.fm and ListenBrainz.
+# [13/43] [ENABLED] Adds options to add played tracks to Last.fm and ListenBrainz.
 Scrobbling
 
-# [ENABLED] Adds options to change the app icon and app name. Branding cannot be changed for mounted (root) installations.
+# [14/43] [ENABLED] Adds options to change the app icon and app name. Branding cannot be changed for mounted (root) installations.
 Custom branding
 
-# [ENABLED] Adds an option to change the header logo in the top left corner of the app.
+# [15/43] [ENABLED] Adds an option to change the header logo in the top left corner of the app.
 Change header
 
-# [ENABLED] Adds options to hide the cast, history, notification, and search buttons.
+# [16/43] [ENABLED] Adds options to hide the cast, history, notification, and search buttons.
 Hide buttons
 
-# [ENABLED] Adds options to hide action buttons under the player.
+# [17/43] [ENABLED] Adds options to hide action buttons under the player.
 Hide music action buttons
 
-# [ENABLED] Adds an option to hide the filter bar at the top of the homepage.
+# [18/43] [ENABLED] Adds an option to hide the filter bar at the top of the homepage.
 Hide filter bar
 
-# [ENABLED] Adds options to hide general layout components.
+# [19/43] [ENABLED] Adds options to hide general layout components.
 Hide layout components
 
-# [ENABLED] Adds an option to hide items on the standard YouTube Music settings screen by their visible name.
+# [20/43] [ENABLED] Adds an option to hide items on the standard YouTube Music settings screen by their visible name.
 Settings menu filter
 
-# [ENABLED] Adds an option to show synced lyrics from LRCLIB or KuGou in the lyrics panel.
+# [21/43] [ENABLED] Adds an option to show synced lyrics from LRCLIB or KuGou in the lyrics panel.
 Third-party lyrics
 
-# [ENABLED] Adds an option to change the miniplayer background color to match the fullscreen player.
+# [22/43] [ENABLED] Adds an option to change the miniplayer background color to match the fullscreen player.
 Change miniplayer color
 
-# [ENABLED] Adds an option to enable forced miniplayer when switching between music videos, podcasts, or songs.
+# [23/43] [ENABLED] Adds an option to enable forced miniplayer when switching between music videos, podcasts, or songs.
 Enable forced miniplayer
 
-# [ENABLED] Adds an option to enable dismissing the miniplayer by swiping down on it.
+# [24/43] [ENABLED] Adds an option to enable dismissing the miniplayer by swiping down on it.
 Enable swipe to dismiss miniplayer
 
-# [ENABLED] Adds options to show previous and next track buttons in the miniplayer.
+# [25/43] [ENABLED] Adds options to show previous and next track buttons in the miniplayer.
 Miniplayer previous and next buttons
 
-# [ENABLED] Adds options to hide navigation bar, labels and buttons.
+# [26/43] [ENABLED] Adds options to hide navigation bar, labels and buttons.
 Navigation bar
 
-# [ENABLED] Adds an option to show the dislike count of tracks with Return YouTube Dislike.
+# [27/43] [ENABLED] Adds an option to show the dislike count of tracks with Return YouTube Dislike.
 Return YouTube Dislike
 
-# [ENABLED] Adds options to enable and configure SponsorBlock, which can skip non-music segments.
+# [28/43] [ENABLED] Adds options to enable and configure SponsorBlock, which can skip non-music segments.
 SponsorBlock
 
-# [ENABLED] Adds an option to set which page the app opens in instead of the homepage.
+# [29/43] [ENABLED] Adds an option to set which page the app opens in instead of the homepage.
 Change start page
 
-# [ENABLED] Adds options for theming, and settings to change the app foreground and background colors.
+# [30/43] [ENABLED] Adds options for theming, and settings to change the app foreground and background colors.
 Theme
 
-# [ENABLED] Bypasses certificate checks which prevent YouTube Music from working on Android Auto.
+# [31/43] [ENABLED] Bypasses certificate checks which prevent YouTube Music from working on Android Auto.
 Bypass certificate checks
 
-# [ENABLED] Adds an option to disable DRC (Dynamic Range Compression) audio.
+# [32/43] [ENABLED] Adds an option to disable DRC (Dynamic Range Compression) audio.
 Disable DRC audio
 
-# [ENABLED] Enables the option to play audio without video.
+# [33/43] [ENABLED] Enables the option to play audio without video.
 Enable exclusive audio playback
 
-# [ENABLED] Adds an option to always use the original audio track.
+# [34/43] [ENABLED] Adds an option to always use the original audio track.
 Force original audio
 
-# [ENABLED] Removes restrictions on background playback, including playing kids videos in the background.
+# [35/43] [ENABLED] Removes restrictions on background playback, including playing kids videos in the background.
 Remove background playback restrictions
 
-# [ENABLED] Adds options for debugging and exporting Morphe logs to the clipboard.
+# [36/43] [ENABLED] Adds options for debugging and exporting Morphe logs to the clipboard.
 Enable debugging
 
-# [ENABLED] Checks if the device DNS server is preventing user watch history from being saved.
+# [37/43] [ENABLED] Checks if the device DNS server is preventing user watch history from being saved.
 Check watch history domain name resolution
 
-# [ENABLED] Allows the app to work without root by using a different package name when patched using a GmsCore instead of Google Play Services.
+# [38/43] [ENABLED] Allows the app to work without root by using a different package name when patched using a GmsCore instead of Google Play Services.
 GmsCore support
 
-# [ENABLED] Removes the tracking query parameters from shared links.
+# [39/43] [ENABLED] Removes the tracking query parameters from shared links.
 Sanitize sharing links
 
-# [DISABLED] Adds settings to route supported network requests through an HTTP or HTTPS proxy.
+# [40/43] [DISABLED] Adds settings to route supported network requests through an HTTP or HTTPS proxy.
 # Network proxy
 
-# [ENABLED] Adds an option to disable QUIC (Quick UDP Internet Connections) network protocol.
+# [41/43] [ENABLED] Adds an option to disable QUIC (Quick UDP Internet Connections) network protocol.
 Disable QUIC protocol
 
-# [ENABLED] Adds options to spoof the client video streams to fix playback.
+# [42/43] [ENABLED] Adds options to spoof the client video streams to fix playback.
 Spoof video streams
 
-# [ENABLED] Adds an option to trick the app into thinking you are running an older version.
+# [43/43] [ENABLED] Adds an option to trick the app into thinking you are running an older version.
 Spoof app version
