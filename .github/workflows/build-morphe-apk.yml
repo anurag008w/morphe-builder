@@ -156,7 +156,7 @@ on:
 env:
   DEFAULT_YOUTUBE_URL: "https://www.apkmirror.com/apk/google-inc/youtube/youtube-21-04-223-release/youtube-21-04-223-android-apk-download/download/?key=b87ce717c47f3920c139dae8e15df2ba744764e9&forcebaseapk=true"
   DEFAULT_YTMUSIC_URL: "https://www.apkmirror.com/apk/google-inc/youtube-music/youtube-music-9-15-51-release/youtube-music-9-15-51-4-android-apk-download/download/?key=fed902f297975b9851e611188d3a3764d9217718&forcebaseapk=true"
-  DEFAULT_REDDIT_URL: "https://www.apkmirror.com/apk/redditinc/reddit/reddit-2025-08-0-release/reddit-2025-08-0-android-apk-download/download/?forcebaseapk=true"
+  DEFAULT_REDDIT_URL: "https://www.apkmirror.com/apk/redditinc/reddit/reddit-2026-04-0-release/reddit-2026-04-0-2-android-apk-download/download/?key=599718010a8e24c93cdc558e266f71441aa9b417&forcebaseapk=true"
 
 permissions:
   contents: write
