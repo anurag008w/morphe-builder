@@ -1,0 +1,119 @@
+name: Sync Latest Patches List
+
+on:
+  schedule:
+    - cron: '0 0 * * 0'  # Runs automatically every Sunday at midnight UTC
+  workflow_dispatch:      # Allows manual one-click trigger anytime
+
+permissions:
+  contents: write
+
+jobs:
+  sync-patches:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '21'
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Fetch Latest Morphe Tools & Patches
+        run: |
+          python3 - << 'EOF'
+          import urllib.request, json, os, sys
+
+          os.makedirs("build-tools", exist_ok=True)
+          headers = {"User-Agent": "Mozilla/5.0"}
+
+          # Fetch CLI
+          req_cli = urllib.request.Request("https://api.github.com/repos/MorpheApp/morphe-desktop/releases/latest", headers=headers)
+          cli_data = json.loads(urllib.request.urlopen(req_cli).read().decode())
+          for a in cli_data.get("assets", []):
+              if a["name"].endswith(".jar"):
+                  urllib.request.urlretrieve(a["browser_download_url"], "build-tools/morphe-desktop.jar")
+                  break
+
+          # Fetch MPP
+          req_patches = urllib.request.Request("https://api.github.com/repos/MorpheApp/morphe-patches/releases/latest", headers=headers)
+          patches_data = json.loads(urllib.request.urlopen(req_patches).read().decode())
+          for a in patches_data.get("assets", []):
+              if a["name"].endswith(".mpp"):
+                  urllib.request.urlretrieve(a["browser_download_url"], "build-tools/patches.mpp")
+                  break
+          EOF
+
+      - name: Generate Updated App-Wise Patch Configs
+        run: |
+          python3 - << 'EOF'
+          import subprocess, re, os
+
+          os.makedirs("config", exist_ok=True)
+
+          def generate_patch_file(package_name, app_name, out_file):
+              cmd = ["java", "-jar", "build-tools/morphe-desktop.jar", "list-patches", "--patches=build-tools/patches.mpp", f"-f={package_name}"]
+              res = subprocess.run(cmd, capture_output=True, text=True)
+              
+              raw = res.stdout + res.stderr
+              entries = raw.split("Index: ")
+              
+              lines = []
+              lines.append(f"# ========================================================")
+              lines.append(f"#  Morphe Patches for {app_name} ({package_name})")
+              lines.append(f"# ========================================================")
+              lines.append(f"# Instructions:")
+              lines.append(f"# - Jo patch chahiye, use waise hi rehne dein (ENABLED).")
+              lines.append(f"# - Jo patch NAHI chahiye, us line ke aage # laga dein (DISABLED).")
+              lines.append(f"# ========================================================\n")
+              
+              count = 0
+              for entry in entries:
+                  if not entry.strip():
+                      continue
+                  name_m = re.search(r"Name:\s*(.+)", entry)
+                  desc_m = re.search(r"Description:\s*(.+)", entry)
+                  enabled_m = re.search(r"Enabled:\s*(true|false)", entry)
+                  
+                  if name_m and enabled_m:
+                      name = name_m.group(1).strip()
+                      desc = desc_m.group(1).strip() if desc_m else ""
+                      enabled = enabled_m.group(1).strip() == "true"
+                      count += 1
+                      if enabled:
+                          lines.append(f"# [ENABLED] {desc}")
+                          lines.append(f"{name}\n")
+                      else:
+                          lines.append(f"# [DISABLED] {desc}")
+                          lines.append(f"# {name}\n")
+                          
+              with open(out_file, "w") as f:
+                  f.write("\n".join(lines))
+              print(f"Updated {out_file}: Total {count} patches")
+
+          generate_patch_file("com.google.android.youtube", "YouTube", "config/youtube-patches.txt")
+          generate_patch_file("com.google.android.apps.youtube.music", "YouTube Music", "config/ytmusic-patches.txt")
+          generate_patch_file("com.reddit.frontpage", "Reddit", "config/reddit-patches.txt")
+          EOF
+
+      - name: Commit & Push Updated Patch Configs
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git add config/*.txt
+          if git diff --staged --quiet; then
+            echo "No new patches found. Everything is up to date!"
+          else
+            git commit -m "Automated: Sync latest Morphe patches list"
+            git push origin main
+            echo "Pushed updated patch lists to repository!"
+          fi
