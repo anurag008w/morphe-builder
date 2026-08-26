@@ -133,52 +133,65 @@ jobs:
 
       - name: Clone & Download Official Morphe Tools
         run: |
-          mkdir -p build-tools
-          cd build-tools
+          python3 - << 'EOF'
+          import urllib.request, json, os, sys
 
-          echo "Fetching latest Morphe / ReVanced CLI..."
-          CLI_URL=$(curl -s https://api.github.com/repos/ReVanced/revanced-cli/releases/latest | grep -o 'https://[^"]*revanced-cli-[0-9.]*-all.jar' | head -n 1)
-          curl -sL "$CLI_URL" -o cli.jar
+          os.makedirs("build-tools", exist_ok=True)
+          headers = {"User-Agent": "Mozilla/5.0"}
 
-          echo "Fetching latest Morphe Patches & Integrations..."
-          PATCHES_URL=$(curl -s https://api.github.com/repos/MorpheApp/morphe-patches/releases/latest | grep -o 'https://[^"]*morphe-patches-[0-9.]*.jar' | head -n 1 || curl -s https://api.github.com/repos/ReVanced/revanced-patches/releases/latest | grep -o 'https://[^"]*revanced-patches-[0-9.]*.jar' | head -n 1)
-          INTEGRATIONS_URL=$(curl -s https://api.github.com/repos/MorpheApp/morphe-patches/releases/latest | grep -o 'https://[^"]*morphe-integrations-[0-9.]*.apk' | head -n 1 || curl -s https://api.github.com/repos/ReVanced/revanced-integrations/releases/latest | grep -o 'https://[^"]*revanced-integrations-[0-9.]*.apk' | head -n 1)
+          # 1. Fetch Morphe Desktop CLI
+          print("Fetching latest Morphe Desktop CLI...")
+          req_cli = urllib.request.Request("https://api.github.com/repos/MorpheApp/morphe-desktop/releases/latest", headers=headers)
+          cli_data = json.loads(urllib.request.urlopen(req_cli).read().decode())
+          cli_url = None
+          for a in cli_data.get("assets", []):
+              if a["name"].endswith(".jar"):
+                  cli_url = a["browser_download_url"]
+                  break
+          if not cli_url:
+              print("Error: Could not find Morphe CLI jar asset.")
+              sys.exit(1)
+          print(f"Downloading CLI from {cli_url}...")
+          urllib.request.urlretrieve(cli_url, "build-tools/morphe-desktop.jar")
 
-          curl -sL "$PATCHES_URL" -o patches.jar
-          curl -sL "$INTEGRATIONS_URL" -o integrations.apk
+          # 2. Fetch Morphe Patches (.mpp)
+          print("Fetching latest Morphe Patches bundle...")
+          req_patches = urllib.request.Request("https://api.github.com/repos/MorpheApp/morphe-patches/releases/latest", headers=headers)
+          patches_data = json.loads(urllib.request.urlopen(req_patches).read().decode())
+          mpp_url = None
+          for a in patches_data.get("assets", []):
+              if a["name"].endswith(".mpp"):
+                  mpp_url = a["browser_download_url"]
+                  break
+          if not mpp_url:
+              print("Error: Could not find Morphe .mpp patch asset.")
+              sys.exit(1)
+          print(f"Downloading Patches from {mpp_url}...")
+          urllib.request.urlretrieve(mpp_url, "build-tools/patches.mpp")
 
-          echo "Tools Ready:"
-          ls -lh
+          print("✅ Official Morphe tools downloaded successfully!")
+          EOF
+
+          ls -lh build-tools/
 
       - name: Patch APK with Morphe Engine
         run: |
-          echo "Starting patch process for ${{ github.event.inputs.app_type }}..."
+          echo "Starting Morphe patching for ${{ github.event.inputs.app_type }}..."
           
-          java -jar build-tools/cli.jar patch \
-            --patches build-tools/patches.jar \
-            --merge build-tools/integrations.apk \
+          # Morphe Desktop CLI automatically applies recommended patches and signs the output APK
+          java -jar build-tools/morphe-desktop.jar patch \
+            --patches build-tools/patches.mpp \
             --out "Morphe-${{ github.event.inputs.app_type }}.apk" \
             input.apk
 
-      - name: Sign APK (Zipalign & Apksigner)
-        run: |
-          echo "Signing Patched APK..."
-          keytool -genkey -v -keystore release.keystore -alias morphe -keyalg RSA -keysize 2048 -validity 10000 \
-            -storepass android -keypass android -dname "CN=Morphe, OU=Morphe, O=Morphe, L=Unknown, ST=Unknown, C=US"
-
-          zipalign -v -p 4 "Morphe-${{ github.event.inputs.app_type }}.apk" "Morphe-${{ github.event.inputs.app_type }}-aligned.apk" || mv "Morphe-${{ github.event.inputs.app_type }}.apk" "Morphe-${{ github.event.inputs.app_type }}-aligned.apk"
-          
-          apksigner sign --ks release.keystore --ks-pass pass:android --key-pass pass:android \
-            --out "Morphe-${{ github.event.inputs.app_type }}-signed.apk" "Morphe-${{ github.event.inputs.app_type }}-aligned.apk"
-
-          echo "Final signed APK ready:"
-          ls -lh Morphe-*-signed.apk
+          echo "Patched & Signed APK ready:"
+          ls -lh Morphe-*.apk
 
       - name: Upload APK to GitHub Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: Morphe-${{ github.event.inputs.app_type }}
-          path: Morphe-${{ github.event.inputs.app_type }}-signed.apk
+          path: Morphe-${{ github.event.inputs.app_type }}.apk
           retention-days: 14
 
       - name: Create GitHub Release
@@ -192,6 +205,6 @@ jobs:
             - **Target:** ${{ github.event.inputs.app_type }}
             - **Built on:** ${{ github.event.repository.updated_at }}
             - **GmsCore / MicroG:** Supported
-          files: Morphe-${{ github.event.inputs.app_type }}-signed.apk
+          files: Morphe-${{ github.event.inputs.app_type }}.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
