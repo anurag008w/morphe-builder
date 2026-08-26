@@ -12,18 +12,17 @@ on:
           - 'YouTube'
           - 'YouTube-Music'
       custom_apk_url:
-        description: 'Optional: Custom APK URL (Khaali chhodoge toh workflow wala default URL use hoga)'
+        description: 'Optional: Custom APK URL (Khaali chhodoge toh default URL use hoga)'
         required: false
         default: ''
         type: string
 
 # ------------------------------------------------------------------
-# 🔗 YAHAN APNE DEFAULT APK LINKS DAAL SAKTE HAIN:
-# (Direct download links like APKMirror/personal cloud/etc.)
+# 🔗 DEFAULT APK DOWNLOAD LINKS
 # ------------------------------------------------------------------
 env:
-  DEFAULT_YOUTUBE_URL: "https://example.com/path-to-your/youtube.apk"
-  DEFAULT_YTMUSIC_URL: "https://example.com/path-to-your/ytmusic.apk"
+  DEFAULT_YOUTUBE_URL: "https://www.apkmirror.com/apk/google-inc/youtube/youtube-21-04-223-release/youtube-21-04-223-android-apk-download/download/?key=b87ce717c47f3920c139dae8e15df2ba744764e9&forcebaseapk=true"
+  DEFAULT_YTMUSIC_URL: "https://www.apkmirror.com/apk/google-inc/youtube-music/youtube-music-8-12-52-release/youtube-music-8-12-52-android-apk-download/download/"
 
 permissions:
   contents: write
@@ -42,6 +41,11 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
       - name: Setup Android Build Tools & SDK
         uses: android-actions/setup-android@v3
 
@@ -59,25 +63,74 @@ jobs:
             else
               SELECTED_URL="${{ env.DEFAULT_YTMUSIC_URL }}"
             fi
-            echo "Using default URL configured in workflow."
+            echo "Using default configured URL."
           fi
 
           echo "final_url=$SELECTED_URL" >> $GITHUB_OUTPUT
 
-      - name: Download Stock APK
+      - name: Smart APK Downloader
         run: |
-          APK_URL="${{ steps.resolve-url.outputs.final_url }}"
-          echo "Downloading target APK from: $APK_URL"
-          
-          curl -sL "$APK_URL" -o input.apk
+          python3 - << 'EOF'
+          import urllib.request, re, sys, os
 
-          if [ ! -s input.apk ]; then
-            echo "❌ Error: APK download fail ho gaya ya link invalid hai! Please valid direct link use karein."
-            exit 1
-          fi
-          
-          echo "✅ APK successfully downloaded. Size:"
-          ls -lh input.apk
+          url = "${{ steps.resolve-url.outputs.final_url }}".strip()
+          print(f"Resolving & Downloading APK from: {url}")
+
+          user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+          headers = {
+              "User-Agent": user_agent,
+              "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+              "Accept-Language": "en-US,en;q=0.5",
+              "Referer": url
+          }
+
+          req = urllib.request.Request(url, headers=headers)
+          with urllib.request.urlopen(req) as resp:
+              content_type = resp.headers.get("Content-Type", "").lower()
+              
+              if "application/vnd.android.package-archive" in content_type or "application/zip" in content_type or "octet-stream" in content_type:
+                  print("Direct APK stream detected. Downloading directly...")
+                  with open("input.apk", "wb") as f:
+                      f.write(resp.read())
+              else:
+                  html = resp.read().decode("utf-8", errors="ignore")
+                  matches = re.findall(r"href=[\"']([^\"']*download\.php[^\"']*)[\"']", html)
+                  
+                  if not matches:
+                      # If no direct download.php, try checking any button/link with forcebaseapk or download
+                      matches = re.findall(r"href=[\"']([^\"']*(?:download|downloading)[^\"']*)[\"']", html)
+                      
+                  if not matches:
+                      print("❌ Could not parse APK link from webpage. Please provide a direct download link.")
+                      sys.exit(1)
+                      
+                  sub_link = matches[0]
+                  if sub_link.startswith("/"):
+                      direct_url = "https://www.apkmirror.com" + sub_link
+                  elif not sub_link.startswith("http"):
+                      direct_url = "https://www.apkmirror.com/" + sub_link
+                  else:
+                      direct_url = sub_link
+                      
+                  print(f"Extracted direct download endpoint: {direct_url}")
+                  sub_req = urllib.request.Request(direct_url, headers=headers)
+                  with urllib.request.urlopen(sub_req) as sub_resp, open("input.apk", "wb") as out_f:
+                      size = sub_resp.headers.get("Content-Length", "Unknown")
+                      print(f"Streaming APK file (Size: {size} bytes)...")
+                      while True:
+                          chunk = sub_resp.read(2 * 1024 * 1024)
+                          if not chunk:
+                              break
+                          out_f.write(chunk)
+                          print(".", end="", flush=True)
+                      print("\nDownload complete!")
+
+          if os.path.exists("input.apk") and os.path.getsize("input.apk") > 1000000:
+              print(f"✅ Download Verified. File Size: {os.path.getsize('input.apk') / (1024*1024):.2f} MB")
+          else:
+              print("❌ Downloaded file is too small or invalid APK.")
+              sys.exit(1)
+          EOF
 
       - name: Clone & Download Official Morphe Tools
         run: |
