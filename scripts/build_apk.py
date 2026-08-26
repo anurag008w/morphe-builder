@@ -49,17 +49,15 @@ def resolve_custom_urls(custom_input, targets, default_urls):
 
     return app_url_map
 
-def download_with_curl(url, dest_file, user_agent):
-    print(f"Attempting download via curl with browser headers: {url[:90]}...")
+def download_with_curl(url, dest_file):
+    user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
     cmd = [
         "curl", "-sSL",
         "-A", user_agent,
-        "-H", "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+        "-H", "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,application/vnd.android.package-archive,*/*;q=0.8",
         "-H", "Accept-Language: en-US,en;q=0.5",
-        "-H", "Sec-Fetch-Dest: document",
-        "-H", "Sec-Fetch-Mode: navigate",
-        "-H", "Sec-Fetch-Site: cross-site",
         "-e", "https://www.google.com/",
+        "--retry", "3",
         "-o", dest_file,
         url
     ]
@@ -70,9 +68,70 @@ def download_with_curl(url, dest_file, user_agent):
         if header.startswith(b"PK\x03\x04"):
             sz = os.path.getsize(dest_file) / (1024 * 1024)
             if sz > 2.0:
-                print(f"✅ curl successfully downloaded genuine APK ({sz:.2f} MB)")
+                print(f"✅ curl downloaded verified APK ({sz:.2f} MB)")
                 return True
     return False
+
+def smart_download_apk(initial_url, dest_file):
+    print(f"Downloading APK from: {initial_url}")
+    
+    # Candidate URLs to try
+    candidate_urls = [initial_url]
+    
+    # If APKPure page is given, add direct CDN endpoints for 2026.14.0
+    if "apkpure" in initial_url:
+        candidate_urls.extend([
+            "https://d.apkpure.net/b/APK/com.reddit.frontpage?versionCode=20261400",
+            "https://d.apkpure.com/b/APK/com.reddit.frontpage?versionCode=20261400",
+            "https://d-11.apkpure.net/b/APK/com.reddit.frontpage?versionCode=20261400"
+        ])
+    elif "apkmirror.com" in initial_url and "forcebaseapk" not in initial_url:
+        candidate_urls.append(initial_url.rstrip("/") + "/download/?forcebaseapk=true")
+
+    user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+    headers = {
+        "User-Agent": user_agent,
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.5"
+    }
+
+    for c_url in candidate_urls:
+        print(f"Trying download endpoint: {c_url[:80]}...")
+        
+        # 1. Try curl first (fastest and bypasses bot protection)
+        if download_with_curl(c_url, dest_file):
+            return
+
+        # 2. Try urllib crawler
+        try:
+            req = urllib.request.Request(c_url, headers=headers)
+            with urllib.request.urlopen(req) as resp:
+                content_type = resp.headers.get("Content-Type", "").lower()
+                first_chunk = resp.read(4096)
+                if first_chunk.startswith(b"PK\x03\x04") or "package-archive" in content_type:
+                    with open(dest_file, "wb") as out_f:
+                        out_f.write(first_chunk)
+                        while True:
+                            chunk = resp.read(2 * 1024 * 1024)
+                            if not chunk: break
+                            out_f.write(chunk)
+                    
+                    sz = os.path.getsize(dest_file) / (1024 * 1024)
+                    if sz > 2.0:
+                        print(f"✅ Downloaded Genuine APK package ({sz:.2f} MB)")
+                        return
+
+                html = (first_chunk + resp.read()).decode("utf-8", errors="ignore")
+                matches = re.findall(r'href=[\"\']([^\"\']*(?:download\.php|downloading|wp-content|d\.apkpure)[^\"\']*)[\"\']', html)
+                if matches:
+                    sub_link = matches[0].replace("&amp;", "&")
+                    resolved_sub = "https://www.apkmirror.com" + sub_link if sub_link.startswith("/") else sub_link
+                    if download_with_curl(resolved_sub, dest_file):
+                        return
+        except Exception as e:
+            print(f"Endpoint notice ({e}), trying next candidate...")
+
+    raise Exception(f"Failed to obtain genuine APK binary for {initial_url}")
 
 def main():
     app_choice = os.environ.get("INPUT_APP_TYPE", "All")
@@ -83,7 +142,7 @@ def main():
     default_urls = {
         "YouTube": os.environ.get("DEFAULT_YOUTUBE_URL", "https://www.apkmirror.com/apk/google-inc/youtube/youtube-21-04-223-release/youtube-21-04-223-android-apk-download/download/?key=b87ce717c47f3920c139dae8e15df2ba744764e9&forcebaseapk=true"),
         "YouTube-Music": os.environ.get("DEFAULT_YTMUSIC_URL", "https://www.apkmirror.com/apk/google-inc/youtube-music/youtube-music-9-15-51-release/youtube-music-9-15-51-4-android-apk-download/download/?key=fed902f297975b9851e611188d3a3764d9217718&forcebaseapk=true"),
-        "Reddit": os.environ.get("DEFAULT_REDDIT_URL", "https://d.apkpure.com/b/APK/com.reddit.frontpage?versionCode=20261400")
+        "Reddit": os.environ.get("DEFAULT_REDDIT_URL", "https://d.apkpure.net/b/APK/com.reddit.frontpage?versionCode=20261400")
     }
 
     # Discover all options files present in config/
@@ -107,81 +166,6 @@ def main():
         targets = [app_choice]
 
     resolved_urls = resolve_custom_urls(custom_url_input, targets, default_urls)
-
-    user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
-    headers = {
-        "User-Agent": user_agent,
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.5"
-    }
-
-    def smart_download_apk(initial_url, dest_file):
-        print(f"Downloading APK from: {initial_url}")
-
-        # If it is APKPure m.apkpure.com page, convert to direct CDN download link
-        if "apkpure.com" in initial_url and "d.apkpure.com" not in initial_url:
-            if "2026.14.0" in initial_url or "com.reddit.frontpage" in initial_url:
-                initial_url = "https://d.apkpure.com/b/APK/com.reddit.frontpage?versionCode=20261400"
-            else:
-                pkg_match = re.search(r'([a-zA-Z0-9._]+frontpage|[a-zA-Z0-9._]+reddit|[a-zA-Z0-9._]+youtube)', initial_url)
-                if pkg_match:
-                    initial_url = f"https://d.apkpure.com/b/APK/{pkg_match.group(1)}?version=latest"
-
-        current_url = initial_url
-        cookie_jar = urllib.request.HTTPCookieProcessor()
-        opener = urllib.request.build_opener(cookie_jar)
-
-        for step in range(6):
-            req_headers = dict(headers)
-            req_headers["Referer"] = current_url
-            req = urllib.request.Request(current_url, headers=req_headers)
-            
-            try:
-                with opener.open(req) as resp:
-                    content_type = resp.headers.get("Content-Type", "").lower()
-                    first_chunk = resp.read(4096)
-                    
-                    if first_chunk.startswith(b"PK\x03\x04") or "package-archive" in content_type or "octet-stream" in content_type:
-                        with open(dest_file, "wb") as out_f:
-                            out_f.write(first_chunk)
-                            while True:
-                                chunk = resp.read(2 * 1024 * 1024)
-                                if not chunk:
-                                    break
-                                out_f.write(chunk)
-                        
-                        file_size = os.path.getsize(dest_file) / (1024 * 1024)
-                        if file_size > 2.0:
-                            print(f"✅ Downloaded Genuine APK package ({file_size:.2f} MB)")
-                            return
-                        else:
-                            print(f"Notice: File too small ({file_size:.2f} MB), following sub-link...")
-
-                    html = (first_chunk + resp.read()).decode("utf-8", errors="ignore")
-                    
-                    # APKMirror / APKPure token extraction
-                    matches = re.findall(r'href=[\"\']([^\"\']*(?:download\.php|downloading|wp-content|d\.apkpure\.com\/b\/APK)[^\"\']*)[\"\']', html)
-                    if not matches:
-                        matches = re.findall(r'href=[\"\']([^\"\']*(?:apk-download\/download)[^\"\']*)[\"\']', html)
-                    
-                    if matches:
-                        sub_link = matches[0].replace("&amp;", "&")
-                        current_url = "https://www.apkmirror.com" + sub_link if sub_link.startswith("/") else sub_link
-                        print(f"Navigating to download token: {current_url[:90]}...")
-                        continue
-
-            except urllib.error.HTTPError as e:
-                print(f"urllib HTTP error ({e.code}), falling back to curl...")
-                if download_with_curl(current_url, dest_file, user_agent):
-                    return
-                raise
-
-        # Final curl attempt if redirects didn't directly yield binary
-        if download_with_curl(initial_url, dest_file, user_agent):
-            return
-
-        raise Exception(f"Failed to obtain genuine APK binary for {initial_url}")
-
     os.makedirs("output", exist_ok=True)
     built_summary = []
 
