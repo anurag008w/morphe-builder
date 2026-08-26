@@ -6,9 +6,51 @@ import subprocess
 import json
 import hashlib
 
+def resolve_custom_urls(custom_input, targets, default_urls):
+    if not custom_input:
+        return default_urls
+    
+    raw_urls = [u.strip() for u in re.split(r"[,\n\s]+", custom_input) if u.strip().startswith("http")]
+    if not raw_urls:
+        return default_urls
+
+    app_url_map = dict(default_urls)
+    unmatched_urls = []
+
+    for u in raw_urls:
+        u_lower = u.lower()
+        if "youtube.music" in u_lower or "youtube-music" in u_lower or "ytmusic" in u_lower:
+            app_url_map["YouTube-Music"] = u
+        elif "reddit" in u_lower:
+            app_url_map["Reddit"] = u
+        elif "youtube" in u_lower:
+            app_url_map["YouTube"] = u
+        elif "twitter" in u_lower or "x.com" in u_lower:
+            app_url_map["Twitter"] = u
+        elif "spotify" in u_lower:
+            app_url_map["Spotify"] = u
+        elif "instagram" in u_lower:
+            app_url_map["Instagram"] = u
+        elif "twitch" in u_lower:
+            app_url_map["Twitch"] = u
+        elif "tiktok" in u_lower or "musically" in u_lower:
+            app_url_map["TikTok"] = u
+        else:
+            unmatched_urls.append(u)
+
+    if unmatched_urls:
+        if len(targets) == 1 and len(unmatched_urls) == 1:
+            app_url_map[targets[0]] = unmatched_urls[0]
+        else:
+            for idx, u in enumerate(unmatched_urls):
+                if idx < len(targets):
+                    app_url_map[targets[idx]] = u
+
+    return app_url_map
+
 def main():
     app_choice = os.environ.get("INPUT_APP_TYPE", "All")
-    custom_url = os.environ.get("INPUT_CUSTOM_APK_URL", "").strip()
+    custom_url_input = os.environ.get("INPUT_CUSTOM_APK_URL", "").strip()
     install_type = os.environ.get("INPUT_INSTALL_TYPE", "Non-Root (with GmsCore)")
     arch = os.environ.get("INPUT_ARCHITECTURE", "all")
 
@@ -37,6 +79,8 @@ def main():
         targets = list(available_apps.keys())
     else:
         targets = [app_choice]
+
+    resolved_urls = resolve_custom_urls(custom_url_input, targets, default_urls)
 
     user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
     headers = {
@@ -117,9 +161,9 @@ def main():
         print(f"  PROCESSING TARGET: {app}")
         print(f"=======================================================")
         
-        apk_url = custom_url if (custom_url and len(targets) == 1) else default_urls.get(app)
+        apk_url = resolved_urls.get(app)
         if not apk_url:
-            print(f"Notice: No default URL configured for {app}. Please provide custom_apk_url.")
+            print(f"Notice: No URL configured for {app}. Skipping.")
             continue
 
         input_apk = f"input-{app}.apk"
