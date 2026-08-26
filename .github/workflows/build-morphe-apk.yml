@@ -9,9 +9,9 @@ on:
         default: 'All (YouTube + YouTube-Music + Reddit)'
         type: choice
         options:
-          - 'All (YouTube + YouTube-Music + Reddit)'
-          - 'YouTube'
+          - 'All (YouTube-Music + YouTube + Reddit)'
           - 'YouTube-Music'
+          - 'YouTube'
           - 'Reddit'
 
       install_type:

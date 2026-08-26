@@ -1,5 +1,5 @@
 # ========================================================
-#  Morphe Patches for YouTube Music (com.google.android.apps.youtube.music)
+#  Morphe Patches for YouTube-Music (com.google.android.apps.youtube.music)
 #  Total Patches: 43
 # ========================================================
 # Instructions:
