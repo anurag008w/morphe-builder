@@ -15,7 +15,7 @@ def main():
     default_urls = {
         "YouTube": os.environ.get("DEFAULT_YOUTUBE_URL", "https://www.apkmirror.com/apk/google-inc/youtube/youtube-21-04-223-release/youtube-21-04-223-android-apk-download/download/?key=b87ce717c47f3920c139dae8e15df2ba744764e9&forcebaseapk=true"),
         "YouTube-Music": os.environ.get("DEFAULT_YTMUSIC_URL", "https://www.apkmirror.com/apk/google-inc/youtube-music/youtube-music-9-15-51-release/youtube-music-9-15-51-4-android-apk-download/download/?key=fed902f297975b9851e611188d3a3764d9217718&forcebaseapk=true"),
-        "Reddit": os.environ.get("DEFAULT_REDDIT_URL", "https://www.apkmirror.com/apk/redditinc/reddit/reddit-2025-08-0-release/reddit-2025-08-0-android-apk-download/download/?forcebaseapk=true")
+        "Reddit": os.environ.get("DEFAULT_REDDIT_URL", "https://d.apkpure.com/b/APK/com.reddit.frontpage?version=latest")
     }
 
     # Discover all options files present in config/
@@ -51,7 +51,7 @@ def main():
         cookie_jar = urllib.request.HTTPCookieProcessor()
         opener = urllib.request.build_opener(cookie_jar)
 
-        for step in range(5):
+        for step in range(6):
             req_headers = dict(headers)
             req_headers["Referer"] = current_url
             req = urllib.request.Request(current_url, headers=req_headers)
@@ -59,7 +59,7 @@ def main():
             with opener.open(req) as resp:
                 content_type = resp.headers.get("Content-Type", "").lower()
                 
-                # Check if it's already an APK stream by checking first 4 bytes
+                # Check if it's an APK stream by checking magic bytes PK\x03\x04
                 first_chunk = resp.read(4096)
                 if first_chunk.startswith(b"PK\x03\x04") or "package-archive" in content_type or "octet-stream" in content_type:
                     with open(dest_file, "wb") as out_f:
@@ -75,27 +75,39 @@ def main():
                         print(f"✅ Downloaded Genuine APK package ({file_size:.2f} MB)")
                         return
                     else:
-                        print(f"Notice: Downloaded file is too small ({file_size:.2f} MB), trying next link...")
+                        print(f"Notice: Downloaded file is too small ({file_size:.2f} MB), looking for sub-link...")
 
-                # If it's HTML, parse the next download button
+                # If it's HTML, parse next download links (APKPure / APKMirror / Direct)
                 html = (first_chunk + resp.read()).decode("utf-8", errors="ignore")
                 
-                # Look for download.php link
+                # 1. APKPure download link patterns
+                apkpure_matches = re.findall(r'href=[\"\']([^\"\']*(?:d\.apkpure\.com\/b\/APK|download\.apkpure\.com)[^\"\']*)[\"\']', html)
+                if not apkpure_matches:
+                    apkpure_matches = re.findall(r'src=[\"\']([^\"\']*(?:d\.apkpure\.com\/b\/APK|download\.apkpure\.com)[^\"\']*)[\"\']', html)
+                if not apkpure_matches:
+                    apkpure_matches = re.findall(r'href=[\"\']([^\"\']*(?:apkpure\.com\/[^\"]*\/download\/)[^\"\']*)[\"\']', html)
+                if apkpure_matches:
+                    sub_link = apkpure_matches[0].replace("&amp;", "&")
+                    current_url = "https://d.apkpure.com" + sub_link if sub_link.startswith("/") else sub_link
+                    print(f"Navigating to APKPure direct link: {current_url[:90]}...")
+                    continue
+
+                # 2. APKMirror download link patterns
                 matches = re.findall(r'href=[\"\']([^\"\']*download\.php[^\"\']*)[\"\']', html)
                 if not matches:
                     matches = re.findall(r'href=[\"\']([^\"\']*(?:downloading|wp-content)[^\"\']*)[\"\']', html)
                 if not matches:
-                    # Look for button links
                     matches = re.findall(r'href=[\"\']([^\"\']*(?:apk-download\/download)[^\"\']*)[\"\']', html)
                 
-                if not matches:
-                    raise Exception(f"Failed to locate download link on page: {current_url}")
+                if matches:
+                    sub_link = matches[0].replace("&amp;", "&")
+                    current_url = "https://www.apkmirror.com" + sub_link if sub_link.startswith("/") else sub_link
+                    print(f"Navigating to APKMirror token link: {current_url[:90]}...")
+                    continue
                 
-                sub_link = matches[0].replace("&amp;", "&")
-                current_url = "https://www.apkmirror.com" + sub_link if sub_link.startswith("/") else sub_link
-                print(f"Navigating to download token: {current_url[:90]}...")
+                raise Exception(f"Failed to locate download link on page: {current_url}")
 
-        raise Exception(f"Failed to obtain genuine APK binary after 5 redirects for {initial_url}")
+        raise Exception(f"Failed to obtain genuine APK binary after redirects for {initial_url}")
 
     os.makedirs("output", exist_ok=True)
     built_summary = []
