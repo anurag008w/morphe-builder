@@ -5,12 +5,16 @@
 # Instructions:
 # - Jo patch chahiye, use waise hi rehne dein (ENABLED).
 # - Jo patch NAHI chahiye, us line ke aage # laga dein (DISABLED).
+# - Agar kisi patch ke options set karne hain (e.g. appName),
+#   aap options-reddit.json me edit kar sakte hain.
 # ========================================================
 
 # [1/22] [DISABLED] Changes the app package name to allow installing the same app multiple times. By default ".morphe" is appended to the package name. Each cloned install must use a unique package name. Cloning does not work with all apps and using this patch may cause app crashes or other unexpected behavior.
+#   ↳ Available Options: {"packageName": "Default", "updatePermissions": false, "updateProviders": false}
 # Clone app
 
 # [2/22] [DISABLED] Spoofs the installer source so the app appears to be installed from an app store.
+#   ↳ Available Options: {"packageInstallerName": "com.android.vending"}
 # Change installer source
 
 # [3/22] [DISABLED] Overrides certificate pinning, allowing to inspect traffic via a proxy.
@@ -32,6 +36,7 @@ Force system font
 Hide Ask button
 
 # [9/22] [DISABLED] Changes the Reddit app name to the name specified in patch options.
+#   ↳ Available Options: {"appName": "Reddit Morphe"}
 # Custom branding name for Reddit
 
 # [10/22] [ENABLED] Adds an option to hide the related or suggested communities shelf in subreddits.

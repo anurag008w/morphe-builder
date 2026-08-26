@@ -6,7 +6,7 @@ on:
       app_type:
         description: '📱 1. Kaunsa app patch karna hai?'
         required: true
-        default: 'All (YouTube + YouTube-Music + Reddit)'
+        default: 'All (YouTube-Music + YouTube + Reddit)'
         type: choice
         options:
           - 'All (YouTube-Music + YouTube + Reddit)'
@@ -24,58 +24,103 @@ on:
           - 'Root (without GmsCore)'
 
       # =========================================================
-      # ⚙️ OPTIONAL DISABLED-BY-DEFAULT PATCHES (UNCHECKED BY DEFAULT)
+      # ⚙️ DISABLED-BY-DEFAULT PATCH TOGGLES (AUTO-DISCOVERED)
       # =========================================================
-      yt_enable_clone_app:
-        description: '🔴 [YT] Clone app (Install as separate second app)'
+      # --- 🎵 YouTube-Music Disabled Patches ---
+      enable_ytmusic_clone_app:
+        description: '🎵 [YouTube-Music] Clone app'
         required: true
         default: false
         type: boolean
 
-      yt_enable_hide_shorts:
-        description: '🔴 [YT] Hide Shorts Tab & Shelf (Shorts band karna)'
+      enable_ytmusic_change_installer_source:
+        description: '🎵 [YouTube-Music] Change installer source'
         required: true
         default: false
         type: boolean
 
-      yt_enable_change_installer:
-        description: '🔴 [YT] Spoof Installer (Play Store Source Spoofing)'
+      enable_ytmusic_override_certificate_pinning:
+        description: '🎵 [YouTube-Music] Override certificate pinning'
         required: true
         default: false
         type: boolean
 
-      yt_enable_disable_updates:
-        description: '🔴 [YT] Disable Play Store Auto-Updates'
+      enable_ytmusic_disable_play_store_updates:
+        description: '🎵 [YouTube-Music] Disable Play Store updates'
         required: true
         default: false
         type: boolean
 
-      ytm_enable_clone_app:
-        description: '🎵 [YT Music] Clone app (Install as separate second app)'
+      enable_ytmusic_network_proxy:
+        description: '🎵 [YouTube-Music] Network proxy'
         required: true
         default: false
         type: boolean
 
-      ytm_enable_change_installer:
-        description: '🎵 [YT Music] Spoof Installer (Play Store Source Spoofing)'
+      # --- 🔴 YouTube Disabled Patches ---
+      enable_youtube_clone_app:
+        description: '🔴 [YouTube] Clone app'
         required: true
         default: false
         type: boolean
 
-      ytm_enable_disable_updates:
-        description: '🎵 [YT Music] Disable Play Store Auto-Updates'
+      enable_youtube_change_installer_source:
+        description: '🔴 [YouTube] Change installer source'
         required: true
         default: false
         type: boolean
 
-      reddit_enable_clone_app:
-        description: '🟠 [Reddit] Clone app (Install as separate second app)'
+      enable_youtube_override_certificate_pinning:
+        description: '🔴 [YouTube] Override certificate pinning'
         required: true
         default: false
         type: boolean
 
-      reddit_enable_change_installer:
-        description: '🟠 [Reddit] Spoof Installer (Play Store Source Spoofing)'
+      enable_youtube_disable_play_store_updates:
+        description: '🔴 [YouTube] Disable Play Store updates'
+        required: true
+        default: false
+        type: boolean
+
+      enable_youtube_network_proxy:
+        description: '🔴 [YouTube] Network proxy'
+        required: true
+        default: false
+        type: boolean
+
+      # --- 🟠 Reddit Disabled Patches ---
+      enable_reddit_clone_app:
+        description: '🟠 [Reddit] Clone app'
+        required: true
+        default: false
+        type: boolean
+
+      enable_reddit_change_installer_source:
+        description: '🟠 [Reddit] Change installer source'
+        required: true
+        default: false
+        type: boolean
+
+      enable_reddit_override_certificate_pinning:
+        description: '🟠 [Reddit] Override certificate pinning'
+        required: true
+        default: false
+        type: boolean
+
+      enable_reddit_disable_play_store_updates:
+        description: '🟠 [Reddit] Disable Play Store updates'
+        required: true
+        default: false
+        type: boolean
+
+      enable_reddit_custom_branding_name_for_reddit:
+        description: '🟠 [Reddit] Custom branding name for Reddit'
+        required: true
+        default: false
+        type: boolean
+
+      enable_reddit_hide_reddit_search:
+        description: '🟠 [Reddit] Hide Reddit search'
         required: true
         default: false
         type: boolean
@@ -197,29 +242,17 @@ jobs:
       - name: Process, Patch and Sign Target APK(s)
         run: |
           python3 - << 'EOF'
-          import urllib.request, re, sys, os, subprocess
+          import urllib.request, re, sys, os, subprocess, json
 
           app_choice = "${{ github.event.inputs.app_type }}"
           custom_url = "${{ github.event.inputs.custom_apk_url }}".strip()
           install_type = "${{ github.event.inputs.install_type }}"
           arch = "${{ github.event.inputs.architecture }}"
 
-          # Disabled-by-default checkboxes
-          yt_clone = "${{ github.event.inputs.yt_enable_clone_app }}" == "true"
-          yt_shorts = "${{ github.event.inputs.yt_enable_hide_shorts }}" == "true"
-          yt_installer = "${{ github.event.inputs.yt_enable_change_installer }}" == "true"
-          yt_updates = "${{ github.event.inputs.yt_enable_disable_updates }}" == "true"
+          all_available = ["YouTube-Music", "YouTube", "Reddit"]
 
-          ytm_clone = "${{ github.event.inputs.ytm_enable_clone_app }}" == "true"
-          ytm_installer = "${{ github.event.inputs.ytm_enable_change_installer }}" == "true"
-          ytm_updates = "${{ github.event.inputs.ytm_enable_disable_updates }}" == "true"
-
-          reddit_clone = "${{ github.event.inputs.reddit_enable_clone_app }}" == "true"
-          reddit_installer = "${{ github.event.inputs.reddit_enable_change_installer }}" == "true"
-
-          targets = []
-          if app_choice == "All (YouTube + YouTube-Music + Reddit)":
-              targets = ["YouTube", "YouTube-Music", "Reddit"]
+          if app_choice.startswith("All"):
+              targets = all_available
           else:
               targets = [app_choice]
 
@@ -254,9 +287,9 @@ jobs:
                           f.write(resp.read())
                   else:
                       html = resp.read().decode("utf-8", errors="ignore")
-                      matches = re.findall(r"href=[\"']([^\"']*download\.php[^\"']*)[\"']", html)
+                      matches = re.findall(r"href=["']([^"']*download\.php[^"']*)["']", html)
                       if not matches:
-                          matches = re.findall(r"href=[\"']([^\"']*(?:download|downloading)[^\"']*)[\"']", html)
+                          matches = re.findall(r"href=["']([^"']*(?:download|downloading)[^"']*)["']", html)
                       if not matches:
                           raise Exception(f"Failed to parse direct link from webpage: {url}")
                       
@@ -270,12 +303,19 @@ jobs:
                                   break
                               out_f.write(chunk)
 
+          # Inputs payload from workflow
+          workflow_inputs = dict(os.environ)
+
           for app in targets:
               print(f"\n=======================================================")
               print(f"  PROCESSING TARGET: {app}")
               print(f"=======================================================")
               
               apk_url = custom_url if (custom_url and len(targets) == 1) else default_urls.get(app)
+              if not apk_url:
+                  print(f"Notice: No default URL for {app}. Please provide custom_apk_url.")
+                  continue
+
               input_apk = f"input-{app}.apk"
               output_apk = f"output/Morphe-{app}.apk"
 
@@ -289,8 +329,16 @@ jobs:
               if arch != "all":
                   args.append(f"--striplibs={arch}")
 
-              # 1. READ ALL PATCHES STRICTLY FROM APP-SPECIFIC CONFIG FILE (config/*.txt)
-              cfg_file = cfg_map.get(app)
+              slug = app.lower().replace("-", "")
+              opts_json_file = f"config/options-{slug}.json"
+
+              # 1. Pass options JSON file if available
+              if os.path.exists(opts_json_file):
+                  args.append(f"--options-file={opts_json_file}")
+                  print(f"Using Options JSON file: {opts_json_file}")
+
+              # 2. READ EXACT PATCH STATUS FROM TXT FILE
+              cfg_file = cfg_map.get(app, f"config/{slug}-patches.txt")
               enabled_patches = set()
               disabled_patches = set()
 
@@ -299,48 +347,23 @@ jobs:
                   with open(cfg_file, "r") as f:
                       for line in f:
                           line = line.strip()
-                          if not line or line.startswith("# =") or line.startswith("# [") or line.startswith("# -") or line.startswith("# Morphe") or line.startswith("# Instructions"):
+                          if not line or line.startswith("# =") or line.startswith("# [") or line.startswith("# -") or line.startswith("# Morphe") or line.startswith("# Instructions") or line.startswith("#   ↳"):
                               continue
                           if line.startswith("#"):
                               p_name = line.lstrip("#").strip()
                               if p_name: disabled_patches.add(p_name)
                           else:
                               enabled_patches.add(line)
-                  print(f"[{app}] Loaded from file: {len(enabled_patches)} Enabled, {len(disabled_patches)} Disabled")
+                  print(f"[{app}] Loaded: {len(enabled_patches)} Enabled, {len(disabled_patches)} Disabled")
 
-              # 2. APPLY POPUP TOGGLES FOR DISABLED-BY-DEFAULT PATCHES (IF TICKED)
-              if app == "YouTube":
-                  if yt_clone:
-                      enabled_patches.add("Clone app")
-                      disabled_patches.discard("Clone app")
-                  if yt_shorts:
-                      enabled_patches.add("Hide Shorts components")
-                      disabled_patches.discard("Hide Shorts components")
-                  if yt_installer:
-                      enabled_patches.add("Change installer source")
-                      disabled_patches.discard("Change installer source")
-                  if yt_updates:
-                      enabled_patches.add("Disable Play Store updates")
-                      disabled_patches.discard("Disable Play Store updates")
-
-              elif app == "YouTube-Music":
-                  if ytm_clone:
-                      enabled_patches.add("Clone app")
-                      disabled_patches.discard("Clone app")
-                  if ytm_installer:
-                      enabled_patches.add("Change installer source")
-                      disabled_patches.discard("Change installer source")
-                  if ytm_updates:
-                      enabled_patches.add("Disable Play Store updates")
-                      disabled_patches.discard("Disable Play Store updates")
-
-              elif app == "Reddit":
-                  if reddit_clone:
-                      enabled_patches.add("Clone app")
-                      disabled_patches.discard("Clone app")
-                  if reddit_installer:
-                      enabled_patches.add("Change installer source")
-                      disabled_patches.discard("Change installer source")
+              # 3. CHECK DYNAMIC DISABLED TOGGLES FROM POPUP
+              for key, val in workflow_inputs.items():
+                  if key.startswith(f"INPUT_ENABLE_{slug.upper()}_") and val == "true":
+                      for dp in list(disabled_patches):
+                          if re.sub(r'[^a-zA-Z0-9_]', '_', dp.lower()) in key.lower():
+                              enabled_patches.add(dp)
+                              disabled_patches.discard(dp)
+                              print(f"[{app}] Enabled via popup toggle: {dp}")
 
               # Root mode handling
               if install_type == "Root (without GmsCore)":
@@ -395,7 +418,7 @@ jobs:
             - **Built on:** ${{ github.event.repository.updated_at }}
 
             #### 📦 Included Downloads:
-            - Patched APKs are listed in Assets below (Built strictly using `config/*.txt` patches).
+            - Patched APKs are listed in Assets below (Built strictly using `config/*.txt` and `config/options-*.json`).
             - GmsCore (MicroG) included for non-root Google account login.
             - `sha256sum.txt` included for file integrity verification.
           files: output/*
