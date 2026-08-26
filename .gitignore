@@ -1,0 +1,6 @@
+*.apk
+*.keystore
+*.jks
+build-tools/
+.idea/
+.DS_Store
