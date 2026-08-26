@@ -52,10 +52,8 @@ def generate_and_merge_options_json(package_name, out_file):
 
             for p_name, p_data in existing_patches.items():
                 if p_name in new_patches:
-                    # Preserve user's enabled status
                     if "enabled" in p_data:
                         new_patches[p_name]["enabled"] = p_data["enabled"]
-                    # Preserve user's customized options
                     if "options" in p_data and "options" in new_patches[p_name]:
                         new_patches[p_name]["options"].update(p_data["options"])
             
@@ -66,7 +64,7 @@ def generate_and_merge_options_json(package_name, out_file):
     with open(out_file, "w") as f:
         json.dump(new_data, f, indent=4)
     
-    print(f"✅ Synced & formatted {out_file} (Total Patches: {len(new_data[0].get('patches', {}))})")
+    print(f"✅ Synced {out_file} ({len(new_data[0].get('patches', {}))} patches)")
     return new_data[0].get("patches", {})
 
 print("Scanning all supported apps in Morphe Patches bundle...")
@@ -234,6 +232,11 @@ jobs:
           print("Fetching latest Morphe Patches bundle...")
           req_patches = urllib.request.Request("https://api.github.com/repos/MorpheApp/morphe-patches/releases/latest", headers=headers)
           patches_data = json.loads(urllib.request.urlopen(req_patches).read().decode())
+          
+          # Save patches metadata for changelog generation
+          with open("build-tools/patches-release.json", "w") as pf:
+              json.dump(patches_data, pf, indent=2)
+
           mpp_url = None
           for a in patches_data.get("assets", []):
               if a["name"].endswith(".mpp"):
@@ -263,140 +266,13 @@ jobs:
           EOF
 
       - name: Process, Patch and Sign Target APK(s)
+        env:
+          INPUT_APP_TYPE: ${{{{ github.event.inputs.app_type }}}}
+          INPUT_CUSTOM_APK_URL: ${{{{ github.event.inputs.custom_apk_url }}}}
+          INPUT_INSTALL_TYPE: ${{{{ github.event.inputs.install_type }}}}
+          INPUT_ARCHITECTURE: ${{{{ github.event.inputs.architecture }}}}
         run: |
-          python3 - << 'EOF'
-          import urllib.request, re, sys, os, subprocess, json
-
-          app_choice = "${{{{ github.event.inputs.app_type }}}}"
-          custom_url = "${{{{ github.event.inputs.custom_apk_url }}}}".strip()
-          install_type = "${{{{ github.event.inputs.install_type }}}}"
-          arch = "${{{{ github.event.inputs.architecture }}}}"
-
-          all_available = {json.dumps(all_app_names)}
-
-          if app_choice.startswith("All"):
-              targets = all_available
-          else:
-              targets = [app_choice]
-
-          default_urls = {{
-              "YouTube": "${{{{ env.DEFAULT_YOUTUBE_URL }}}}",
-              "YouTube-Music": "${{{{ env.DEFAULT_YTMUSIC_URL }}}}",
-              "Reddit": "${{{{ env.DEFAULT_REDDIT_URL }}}}"
-          }}
-
-          user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
-          headers = {{
-              "User-Agent": user_agent,
-              "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-              "Accept-Language": "en-US,en;q=0.5"
-          }}
-
-          def download_apk(url, dest_file):
-              print(f"Downloading from URL: {{url}}")
-              headers_with_ref = dict(headers)
-              headers_with_ref["Referer"] = url
-              req = urllib.request.Request(url, headers=headers_with_ref)
-              with urllib.request.urlopen(req) as resp:
-                  content_type = resp.headers.get("Content-Type", "").lower()
-                  if "application/vnd.android.package-archive" in content_type or "application/zip" in content_type or "octet-stream" in content_type:
-                      with open(dest_file, "wb") as f:
-                          f.write(resp.read())
-                  else:
-                      html = resp.read().decode("utf-8", errors="ignore")
-                      matches = re.findall(r"href=[\"']([^\"']*download\.php[^\"']*)[\"']", html)
-                      if not matches:
-                          matches = re.findall(r"href=[\"']([^\"']*(?:download|downloading)[^\"']*)[\"']", html)
-                      if not matches:
-                          raise Exception(f"Failed to parse direct link from webpage: {{url}}")
-                      
-                      sub_link = matches[0]
-                      direct_url = "https://www.apkmirror.com" + sub_link if sub_link.startswith("/") else sub_link
-                      sub_req = urllib.request.Request(direct_url, headers=headers_with_ref)
-                      with urllib.request.urlopen(sub_req) as sub_resp, open(dest_file, "wb") as out_f:
-                          while True:
-                              chunk = sub_resp.read(2 * 1024 * 1024)
-                              if not chunk:
-                                  break
-                              out_f.write(chunk)
-
-          # Inputs payload from workflow
-          workflow_inputs = dict(os.environ)
-
-          for app in targets:
-              print(f"\\n=======================================================")
-              print(f"  PROCESSING TARGET: {{app}}")
-              print(f"=======================================================")
-              
-              apk_url = custom_url if (custom_url and len(targets) == 1) else default_urls.get(app)
-              if not apk_url:
-                  print(f"Notice: No default URL configured for {{app}}. Please provide custom_apk_url.")
-                  continue
-
-              input_apk = f"input-{{app}}.apk"
-              output_apk = f"output/Morphe-{{app}}.apk"
-
-              download_apk(apk_url, input_apk)
-              print(f"✅ {{app}} stock APK downloaded: {{os.path.getsize(input_apk) / (1024*1024):.2f}} MB")
-
-              args = ["java", "-jar", "build-tools/morphe-desktop.jar", "patch"]
-              args.extend(["-p", "build-tools/patches.mpp"])
-              args.extend(["-o", output_apk])
-
-              if arch != "all":
-                  args.append(f"--striplibs={{arch}}")
-
-              slug = app.lower().replace("-", "")
-              opts_json_file = f"config/options-{{slug}}.json"
-
-              # Load options JSON file
-              options_data = None
-              if os.path.exists(opts_json_file):
-                  with open(opts_json_file, "r") as f:
-                      options_data = json.load(f)
-
-              runtime_opts_file = f"/tmp/runtime_options_{{slug}}.json"
-              if options_data:
-                  patches_dict = options_data[0].get("patches", {{}})
-
-                  # 1. Apply UI popup toggles for disabled patches if checked
-                  for key, val in workflow_inputs.items():
-                      if key.startswith(f"INPUT_ENABLE_{{slug.upper()}}_") and val == "true":
-                          for p_name in patches_dict:
-                              if re.sub(r'[^a-zA-Z0-9_]', '_', p_name.lower()) in key.lower():
-                                  patches_dict[p_name]["enabled"] = True
-                                  print(f"[{{app}}] Enabled via popup toggle: {{p_name}}")
-
-                  # 2. Apply Root mode handling
-                  if install_type == "Root (without GmsCore)":
-                      if "GmsCore support" in patches_dict:
-                          patches_dict["GmsCore support"]["enabled"] = False
-
-                  options_data[0]["patches"] = patches_dict
-                  with open(runtime_opts_file, "w") as f:
-                      json.dump(options_data, f, indent=4)
-
-                  args.append(f"--options-file={{runtime_opts_file}}")
-                  print(f"✅ Loaded Options JSON: {{opts_json_file}} with {len(patches_dict)} patches")
-
-              args.append(input_apk)
-              print(f"Executing patcher for {{app}}...")
-              res = subprocess.run(args)
-              if res.returncode != 0:
-                  print(f"❌ Patching failed for {{app}}")
-                  sys.exit(res.returncode)
-              print(f"✅ {{app}} successfully patched!")
-
-          # Generate SHA256 Checksums
-          with open("output/sha256sum.txt", "w") as chk_file:
-              for f_name in os.listdir("output"):
-                  if f_name.endswith(".apk"):
-                      import hashlib
-                      with open(os.path.join("output", f_name), "rb") as af:
-                          h = hashlib.sha256(af.read()).hexdigest()
-                          chk_file.write(f"{{h}}  {{f_name}}\\n")
-          EOF
-
+          python3 scripts/build_apk.py
           echo "Generated Files in output directory:"
           ls -lh output/
 
@@ -413,17 +289,7 @@ jobs:
         with:
           tag_name: build-v${{{{ github.run_number }}}}
           name: "Morphe Apps Build #${{{{ github.run_number }}}}"
-          body: |
-            ### 💊 Morphe Patched Apps Release
-            - **Target:** ${{{{ github.event.inputs.app_type }}}}
-            - **Architecture:** ${{{{ github.event.inputs.architecture }}}}
-            - **Install Type:** ${{{{ github.event.inputs.install_type }}}}
-            - **Built on:** ${{{{ github.event.repository.updated_at }}}}
-
-            #### 📦 Included Downloads:
-            - Patched APKs are listed in Assets below (Built strictly using pure JSON options).
-            - GmsCore (MicroG) included for non-root Google account login.
-            - `sha256sum.txt` included for file integrity verification.
+          body_path: output/release_notes.md
           files: output/*
         env:
           GITHUB_TOKEN: ${{{{ secrets.GITHUB_TOKEN }}}}

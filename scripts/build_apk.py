@@ -1,0 +1,208 @@
+import urllib.request
+import re
+import sys
+import os
+import subprocess
+import json
+import hashlib
+
+def main():
+    app_choice = os.environ.get("INPUT_APP_TYPE", "All")
+    custom_url = os.environ.get("INPUT_CUSTOM_APK_URL", "").strip()
+    install_type = os.environ.get("INPUT_INSTALL_TYPE", "Non-Root (with GmsCore)")
+    arch = os.environ.get("INPUT_ARCHITECTURE", "all")
+
+    default_urls = {
+        "YouTube": os.environ.get("DEFAULT_YOUTUBE_URL"),
+        "YouTube-Music": os.environ.get("DEFAULT_YTMUSIC_URL"),
+        "Reddit": os.environ.get("DEFAULT_REDDIT_URL")
+    }
+
+    # Discover all options files present in config/
+    available_apps = {}
+    if os.path.exists("config"):
+        for f in os.listdir("config"):
+            if f.startswith("options-") and f.endswith(".json"):
+                slug = f.replace("options-", "").replace(".json", "")
+                if slug == "youtube":
+                    available_apps["YouTube"] = f
+                elif slug == "ytmusic":
+                    available_apps["YouTube-Music"] = f
+                elif slug == "reddit":
+                    available_apps["Reddit"] = f
+                else:
+                    available_apps[slug.capitalize()] = f
+
+    if app_choice.startswith("All"):
+        targets = list(available_apps.keys())
+    else:
+        targets = [app_choice]
+
+    user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+    headers = {
+        "User-Agent": user_agent,
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.5"
+    }
+
+    def download_apk(url, dest_file):
+        print(f"Downloading from URL: {url}")
+        headers_with_ref = dict(headers)
+        headers_with_ref["Referer"] = url
+        req = urllib.request.Request(url, headers=headers_with_ref)
+        with urllib.request.urlopen(req) as resp:
+            content_type = resp.headers.get("Content-Type", "").lower()
+            if "application/vnd.android.package-archive" in content_type or "application/zip" in content_type or "octet-stream" in content_type:
+                with open(dest_file, "wb") as f:
+                    f.write(resp.read())
+            else:
+                html = resp.read().decode("utf-8", errors="ignore")
+                matches = re.findall(r'href=[\"\']([^\"\']*download\.php[^\"\']*)[\"\']', html)
+                if not matches:
+                    matches = re.findall(r'href=[\"\']([^\"\']*(?:download|downloading)[^\"\']*)[\"\']', html)
+                if not matches:
+                    raise Exception(f"Failed to parse direct link from webpage: {url}")
+                
+                sub_link = matches[0]
+                direct_url = "https://www.apkmirror.com" + sub_link if sub_link.startswith("/") else sub_link
+                sub_req = urllib.request.Request(direct_url, headers=headers_with_ref)
+                with urllib.request.urlopen(sub_req) as sub_resp, open(dest_file, "wb") as out_f:
+                    while True:
+                        chunk = sub_resp.read(2 * 1024 * 1024)
+                        if not chunk:
+                            break
+                        out_f.write(chunk)
+
+    os.makedirs("output", exist_ok=True)
+    built_summary = []
+
+    for app in targets:
+        print(f"\n=======================================================")
+        print(f"  PROCESSING TARGET: {app}")
+        print(f"=======================================================")
+        
+        apk_url = custom_url if (custom_url and len(targets) == 1) else default_urls.get(app)
+        if not apk_url:
+            print(f"Notice: No default URL configured for {app}. Please provide custom_apk_url.")
+            continue
+
+        input_apk = f"input-{app}.apk"
+        output_apk = f"output/Morphe-{app}.apk"
+
+        download_apk(apk_url, input_apk)
+        in_size = os.path.getsize(input_apk) / (1024*1024)
+        print(f"✅ {app} stock APK downloaded: {in_size:.2f} MB")
+
+        args = ["java", "-jar", "build-tools/morphe-desktop.jar", "patch"]
+        args.extend(["-p", "build-tools/patches.mpp"])
+        args.extend(["-o", output_apk])
+
+        if arch != "all":
+            args.append(f"--striplibs={arch}")
+
+        slug = app.lower().replace("-", "")
+        opts_json_file = f"config/options-{slug}.json"
+        applied_patch_count = 0
+
+        # Load options JSON file
+        if os.path.exists(opts_json_file):
+            with open(opts_json_file, "r") as f:
+                options_data = json.load(f)
+
+            patches_dict = options_data[0].get("patches", {})
+
+            # 1. Apply UI popup toggles for disabled patches if checked
+            for key, val in os.environ.items():
+                if key.startswith(f"INPUT_ENABLE_{slug.upper()}_") and val == "true":
+                    for p_name in patches_dict:
+                        if re.sub(r'[^a-zA-Z0-9_]', '_', p_name.lower()) in key.lower():
+                            patches_dict[p_name]["enabled"] = True
+                            print(f"[{app}] Enabled via popup toggle: {p_name}")
+
+            # 2. Apply Root mode handling
+            if install_type == "Root (without GmsCore)":
+                if "GmsCore support" in patches_dict:
+                    patches_dict["GmsCore support"]["enabled"] = False
+
+            runtime_opts_file = f"/tmp/runtime_options_{slug}.json"
+            options_data[0]["patches"] = patches_dict
+            with open(runtime_opts_file, "w") as f:
+                json.dump(options_data, f, indent=4)
+
+            args.append(f"--options-file={runtime_opts_file}")
+            applied_patch_count = sum(1 for p in patches_dict.values() if p.get("enabled", True))
+            print(f"✅ Loaded Options JSON: {opts_json_file} ({applied_patch_count} patches enabled)")
+
+        args.append(input_apk)
+        print(f"Executing patcher for {app}...")
+        res = subprocess.run(args)
+        if res.returncode != 0:
+            print(f"❌ Patching failed for {app}")
+            sys.exit(res.returncode)
+        
+        out_size = os.path.getsize(output_apk) / (1024*1024)
+        print(f"✅ {app} successfully patched! (Size: {out_size:.2f} MB)")
+        built_summary.append({
+            "name": app,
+            "filename": f"Morphe-{app}.apk",
+            "size": f"{out_size:.1f} MB",
+            "patches_count": applied_patch_count
+        })
+
+    # Generate SHA256 Checksums
+    checksum_lines = []
+    with open("output/sha256sum.txt", "w") as chk_file:
+        for f_name in sorted(os.listdir("output")):
+            if f_name.endswith(".apk"):
+                with open(os.path.join("output", f_name), "rb") as af:
+                    h = hashlib.sha256(af.read()).hexdigest()
+                    chk_file.write(f"{h}  {f_name}\n")
+                    checksum_lines.append(f"- `{f_name}`: `{h}`")
+
+    # Load Official Morphe Patches Release Notes / Changelog
+    patches_changelog = "Official Morphe Patches Bundle applied."
+    patches_tag = "Latest"
+    if os.path.exists("build-tools/patches-release.json"):
+        try:
+            with open("build-tools/patches-release.json", "r") as f:
+                rel_data = json.load(f)
+                patches_tag = rel_data.get("tag_name", "Latest")
+                patches_changelog = rel_data.get("body", "").strip()
+        except Exception as e:
+            print(f"Notice: Could not parse patches changelog: {e}")
+
+    # Generate Rich GitHub Release Notes
+    summary_table = [
+        "| App | Output File | Size | Patches Applied |",
+        "| :--- | :--- | :--- | :--- |"
+    ]
+    for b in built_summary:
+        summary_table.append(f"| **{b['name']}** | `{b['filename']}` | {b['size']} | {b['patches_count']} patches |")
+
+    release_body = f"""## 🚀 Morphe Patched Apps Release
+
+### 📱 Built Applications ({len(built_summary)}):
+{chr(10).join(summary_table)}
+
+- **Architecture:** `{arch}`
+- **Install Mode:** `{install_type}`
+
+---
+
+### 📋 Official Morphe Patches Changelog ({patches_tag}):
+{patches_changelog}
+
+---
+
+### 🔐 File Integrity (SHA-256):
+{chr(10).join(checksum_lines)}
+
+> 💡 *Non-Root users must install MicroG (GmsCore) included in the assets below to sign in to Google accounts.*
+"""
+
+    with open("output/release_notes.md", "w") as rf:
+        rf.write(release_body)
+    print("✅ Generated rich release notes in output/release_notes.md")
+
+if __name__ == "__main__":
+    main()

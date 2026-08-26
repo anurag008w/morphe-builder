@@ -1,6 +1,9 @@
 *.apk
+*.jar
 *.keystore
 *.jks
 build-tools/
-.idea/
-.DS_Store
+test-*/
+output/
+__pycache__/
+*.pycore
