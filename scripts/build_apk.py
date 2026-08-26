@@ -75,17 +75,8 @@ def download_with_curl(url, dest_file):
 def smart_download_apk(initial_url, dest_file):
     print(f"Downloading APK from: {initial_url}")
     
-    # Candidate URLs to try
     candidate_urls = [initial_url]
-    
-    # If APKPure page is given, add direct CDN endpoints for 2026.14.0
-    if "apkpure" in initial_url:
-        candidate_urls.extend([
-            "https://d.apkpure.net/b/APK/com.reddit.frontpage?versionCode=20261400",
-            "https://d.apkpure.com/b/APK/com.reddit.frontpage?versionCode=20261400",
-            "https://d-11.apkpure.net/b/APK/com.reddit.frontpage?versionCode=20261400"
-        ])
-    elif "apkmirror.com" in initial_url and "forcebaseapk" not in initial_url:
+    if "apkmirror.com" in initial_url and "forcebaseapk" not in initial_url:
         candidate_urls.append(initial_url.rstrip("/") + "/download/?forcebaseapk=true")
 
     user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
@@ -98,7 +89,7 @@ def smart_download_apk(initial_url, dest_file):
     for c_url in candidate_urls:
         print(f"Trying download endpoint: {c_url[:80]}...")
         
-        # 1. Try curl first (fastest and bypasses bot protection)
+        # 1. Try curl
         if download_with_curl(c_url, dest_file):
             return
 
@@ -122,14 +113,14 @@ def smart_download_apk(initial_url, dest_file):
                         return
 
                 html = (first_chunk + resp.read()).decode("utf-8", errors="ignore")
-                matches = re.findall(r'href=[\"\']([^\"\']*(?:download\.php|downloading|wp-content|d\.apkpure)[^\"\']*)[\"\']', html)
+                matches = re.findall(r'href=[\"\']([^\"\']*(?:download\.php|downloading|wp-content)[^\"\']*)[\"\']', html)
                 if matches:
                     sub_link = matches[0].replace("&amp;", "&")
                     resolved_sub = "https://www.apkmirror.com" + sub_link if sub_link.startswith("/") else sub_link
                     if download_with_curl(resolved_sub, dest_file):
                         return
         except Exception as e:
-            print(f"Endpoint notice ({e}), trying next candidate...")
+            print(f"Notice ({e}), trying next option...")
 
     raise Exception(f"Failed to obtain genuine APK binary for {initial_url}")
 
@@ -142,7 +133,7 @@ def main():
     default_urls = {
         "YouTube": os.environ.get("DEFAULT_YOUTUBE_URL", "https://www.apkmirror.com/apk/google-inc/youtube/youtube-21-04-223-release/youtube-21-04-223-android-apk-download/download/?key=b87ce717c47f3920c139dae8e15df2ba744764e9&forcebaseapk=true"),
         "YouTube-Music": os.environ.get("DEFAULT_YTMUSIC_URL", "https://www.apkmirror.com/apk/google-inc/youtube-music/youtube-music-9-15-51-release/youtube-music-9-15-51-4-android-apk-download/download/?key=fed902f297975b9851e611188d3a3764d9217718&forcebaseapk=true"),
-        "Reddit": os.environ.get("DEFAULT_REDDIT_URL", "https://d.apkpure.net/b/APK/com.reddit.frontpage?versionCode=20261400")
+        "Reddit": os.environ.get("DEFAULT_REDDIT_URL", "https://www.apkmirror.com/apk/redditinc/reddit/reddit-2025-08-0-release/reddit-2025-08-0-android-apk-download/download/?forcebaseapk=true")
     }
 
     # Discover all options files present in config/
@@ -167,80 +158,95 @@ def main():
 
     resolved_urls = resolve_custom_urls(custom_url_input, targets, default_urls)
     os.makedirs("output", exist_ok=True)
+    
     built_summary = []
+    failed_summary = []
 
     for app in targets:
         print(f"\n=======================================================")
         print(f"  PROCESSING TARGET: {app}")
         print(f"=======================================================")
         
-        apk_url = resolved_urls.get(app)
-        if not apk_url:
-            print(f"Notice: No URL configured for {app}. Skipping.")
-            continue
+        try:
+            apk_url = resolved_urls.get(app)
+            if not apk_url:
+                print(f"Notice: No URL configured for {app}. Skipping.")
+                continue
 
-        input_apk = f"input-{app}.apk"
-        output_apk = f"output/Morphe-{app}.apk"
+            input_apk = f"input-{app}.apk"
+            output_apk = f"output/Morphe-{app}.apk"
 
-        smart_download_apk(apk_url, input_apk)
-        in_size = os.path.getsize(input_apk) / (1024*1024)
-        print(f"✅ {app} stock APK ready: {in_size:.2f} MB")
+            smart_download_apk(apk_url, input_apk)
+            in_size = os.path.getsize(input_apk) / (1024*1024)
+            print(f"✅ {app} stock APK ready: {in_size:.2f} MB")
 
-        args = ["java", "-jar", "build-tools/morphe-desktop.jar", "patch"]
-        args.extend(["-p", "build-tools/patches.mpp"])
-        args.extend(["-o", output_apk])
+            args = ["java", "-jar", "build-tools/morphe-desktop.jar", "patch"]
+            args.extend(["-p", "build-tools/patches.mpp"])
+            args.extend(["-o", output_apk])
 
-        if arch != "all":
-            args.append(f"--striplibs={arch}")
+            if arch != "all":
+                args.append(f"--striplibs={arch}")
 
-        slug = app.lower().replace("-", "")
-        opts_json_file = f"config/options-{slug}.json"
-        applied_patch_count = 0
+            slug = app.lower().replace("-", "")
+            opts_json_file = f"config/options-{slug}.json"
+            applied_patch_count = 0
 
-        # Load options JSON file
-        if os.path.exists(opts_json_file):
-            with open(opts_json_file, "r") as f:
-                options_data = json.load(f)
+            # Load options JSON file
+            if os.path.exists(opts_json_file):
+                with open(opts_json_file, "r") as f:
+                    options_data = json.load(f)
 
-            patches_dict = options_data[0].get("patches", {})
+                patches_dict = options_data[0].get("patches", {})
 
-            # 1. Apply UI popup toggles for disabled patches if checked
-            for key, val in os.environ.items():
-                if key.startswith(f"INPUT_ENABLE_{slug.upper()}_") and val == "true":
-                    for p_name in patches_dict:
-                        if re.sub(r'[^a-zA-Z0-9_]', '_', p_name.lower()) in key.lower():
-                            patches_dict[p_name]["enabled"] = True
-                            print(f"[{app}] Enabled via popup toggle: {p_name}")
+                # 1. Apply UI popup toggles for disabled patches if checked
+                for key, val in os.environ.items():
+                    if key.startswith(f"INPUT_ENABLE_{slug.upper()}_") and val == "true":
+                        for p_name in patches_dict:
+                            if re.sub(r'[^a-zA-Z0-9_]', '_', p_name.lower()) in key.lower():
+                                patches_dict[p_name]["enabled"] = True
+                                print(f"[{app}] Enabled via popup toggle: {p_name}")
 
-            # 2. Apply Root mode handling
-            if install_type == "Root (without GmsCore)":
-                if "GmsCore support" in patches_dict:
-                    patches_dict["GmsCore support"]["enabled"] = False
+                # 2. Apply Root mode handling
+                if install_type == "Root (without GmsCore)":
+                    if "GmsCore support" in patches_dict:
+                        patches_dict["GmsCore support"]["enabled"] = False
 
-            runtime_opts_file = f"/tmp/runtime_options_{slug}.json"
-            options_data[0]["patches"] = patches_dict
-            with open(runtime_opts_file, "w") as f:
-                json.dump(options_data, f, indent=4)
+                runtime_opts_file = f"/tmp/runtime_options_{slug}.json"
+                options_data[0]["patches"] = patches_dict
+                with open(runtime_opts_file, "w") as f:
+                    json.dump(options_data, f, indent=4)
 
-            args.append(f"--options-file={runtime_opts_file}")
-            applied_patch_count = sum(1 for p in patches_dict.values() if p.get("enabled", True))
-            print(f"✅ Loaded Options JSON: {opts_json_file} ({applied_patch_count} patches enabled)")
+                args.append(f"--options-file={runtime_opts_file}")
+                applied_patch_count = sum(1 for p in patches_dict.values() if p.get("enabled", True))
+                print(f"✅ Loaded Options JSON: {opts_json_file} ({applied_patch_count} patches enabled)")
 
-        args.append(input_apk)
-        print(f"Executing patcher for {app}...")
-        res = subprocess.run(args)
-        if res.returncode != 0:
-            print(f"❌ Patching failed for {app}")
-            sys.exit(res.returncode)
-        
-        out_size = os.path.getsize(output_apk) / (1024*1024)
-        print(f"✅ {app} successfully patched! (Size: {out_size:.2f} MB)")
-        built_summary.append({
-            "name": app,
-            "filename": f"Morphe-{app}.apk",
-            "size": f"{out_size:.1f} MB",
-            "patches_count": applied_patch_count
-        })
+            args.append(input_apk)
+            print(f"Executing patcher for {app}...")
+            res = subprocess.run(args)
+            if res.returncode != 0:
+                raise Exception(f"Morphe patcher exited with code {res.returncode}")
+            
+            out_size = os.path.getsize(output_apk) / (1024*1024)
+            print(f"✅ {app} successfully patched! (Size: {out_size:.2f} MB)")
+            built_summary.append({
+                "name": app,
+                "filename": f"Morphe-{app}.apk",
+                "size": f"{out_size:.1f} MB",
+                "patches_count": applied_patch_count
+            })
+
+        except Exception as e:
+            print(f"\n⚠️ WARNING: Failed to process target [{app}]: {e}")
+            print(f"👉 Continuing with remaining targets...")
+            failed_summary.append({
+                "name": app,
+                "error": str(e)
+            })
+
+    # If all targets failed, exit with error
+    if not built_summary:
+        print("❌ Error: All target applications failed to build.")
+        sys.exit(1)
 
     # Generate SHA256 Checksums
     checksum_lines = []
@@ -272,11 +278,16 @@ def main():
     for b in built_summary:
         summary_table.append(f"| **{b['name']}** | `{b['filename']}` | {b['size']} | {b['patches_count']} patches |")
 
+    failed_section = ""
+    if failed_summary:
+        failed_lines = [f"- **{f['name']}**: `{f['error']}`" for f in failed_summary]
+        failed_section = f"\n### ⚠️ Skipped / Failed in this Run:\n" + "\n".join(failed_lines) + "\n*(Aap workflow ko dobara sirf is app ke liye custom URL dekar run kar sakte hain)*\n"
+
     release_body = f"""## 🚀 Morphe Patched Apps Release
 
 ### 📱 Built Applications ({len(built_summary)}):
 {chr(10).join(summary_table)}
-
+{failed_section}
 - **Architecture:** `{arch}`
 - **Install Mode:** `{install_type}`
 
@@ -295,7 +306,7 @@ def main():
 
     with open("output/release_notes.md", "w") as rf:
         rf.write(release_body)
-    print("✅ Generated rich release notes in output/release_notes.md")
+    print(f"✅ Build finished: {len(built_summary)} apps built successfully! ({len(failed_summary)} skipped)")
 
 if __name__ == "__main__":
     main()
