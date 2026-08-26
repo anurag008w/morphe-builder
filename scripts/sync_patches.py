@@ -166,7 +166,7 @@ on:
         type: boolean
 
       custom_apk_url:
-        description: '🔗 Custom APK URL (Khaali chhodoge toh default use hoga)'
+        description: '🔗 Custom APK URL(s) (Comma/Space se multiple links bhi de sakte hain)'
         required: false
         default: ''
         type: string
@@ -177,7 +177,7 @@ on:
 env:
   DEFAULT_YOUTUBE_URL: "https://www.apkmirror.com/apk/google-inc/youtube/youtube-21-04-223-release/youtube-21-04-223-android-apk-download/download/?key=b87ce717c47f3920c139dae8e15df2ba744764e9&forcebaseapk=true"
   DEFAULT_YTMUSIC_URL: "https://www.apkmirror.com/apk/google-inc/youtube-music/youtube-music-9-15-51-release/youtube-music-9-15-51-4-android-apk-download/download/?key=fed902f297975b9851e611188d3a3764d9217718&forcebaseapk=true"
-  DEFAULT_REDDIT_URL: "https://www.apkmirror.com/apk/redditinc/reddit/reddit-2025-08-0-release/reddit-2025-08-0-android-apk-download/download/"
+  DEFAULT_REDDIT_URL: "https://m.apkpure.com/reddit-app/com.reddit.frontpage/download/2026.14.0"
 
 permissions:
   contents: write
