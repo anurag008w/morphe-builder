@@ -310,6 +310,12 @@ jobs:
               "Reddit": "${{ env.DEFAULT_REDDIT_URL }}"
           }
 
+          cfg_map = {
+              "YouTube": "config/youtube-patches.txt",
+              "YouTube-Music": "config/ytmusic-patches.txt",
+              "Reddit": "config/reddit-patches.txt"
+          }
+
           user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
           headers = {
               "User-Agent": user_agent,
@@ -364,59 +370,80 @@ jobs:
               if arch != "all":
                   args.append(f"--striplibs={arch}")
 
-              # Dynamic Patch Handling per App from UI Checkboxes
+              # 1. READ ALL PATCHES FROM CONFIG FILE FIRST
+              cfg_file = cfg_map.get(app)
               disabled_patches = set()
               enabled_patches = set()
 
+              if os.path.exists(cfg_file):
+                  print(f"Loading full patch list from: {cfg_file}")
+                  with open(cfg_file, "r") as f:
+                      for line in f:
+                          line = line.strip()
+                          if not line or line.startswith("# =") or line.startswith("# [") or line.startswith("# -") or line.startswith("# Morphe") or line.startswith("# Instructions"):
+                              continue
+                          if line.startswith("#"):
+                              p_name = line.lstrip("#").strip()
+                              if p_name: disabled_patches.add(p_name)
+                          else:
+                              enabled_patches.add(line)
+                  print(f"[{app}] Loaded from file: {len(enabled_patches)} Enabled, {len(disabled_patches)} Disabled")
+
+              # 2. OVERRIDE WITH RUN WORKFLOW CHECKBOXES
               if app == "YouTube":
-                  if not yt_ads: disabled_patches.add("Hide ads")
-                  if not yt_sponsor: disabled_patches.add("SponsorBlock")
-                  if not yt_dislike: disabled_patches.add("Return YouTube Dislike")
-                  if not yt_bg: disabled_patches.add("Remove background playback restrictions")
-                  if not yt_dl: disabled_patches.add("Downloads")
-                  if not yt_swipe: disabled_patches.add("Swipe controls")
-                  if not yt_seekbar: disabled_patches.add("Seekbar")
-                  if not yt_branding: disabled_patches.add("Custom branding")
-                  if yt_shorts: enabled_patches.add("Hide Shorts components")
+                  if not yt_ads: disabled_patches.add("Hide ads"); enabled_patches.discard("Hide ads")
+                  if not yt_sponsor: disabled_patches.add("SponsorBlock"); enabled_patches.discard("SponsorBlock")
+                  if not yt_dislike: disabled_patches.add("Return YouTube Dislike"); enabled_patches.discard("Return YouTube Dislike")
+                  if not yt_bg: disabled_patches.add("Remove background playback restrictions"); enabled_patches.discard("Remove background playback restrictions")
+                  if not yt_dl: disabled_patches.add("Downloads"); enabled_patches.discard("Downloads")
+                  if not yt_swipe: disabled_patches.add("Swipe controls"); enabled_patches.discard("Swipe controls")
+                  if not yt_seekbar: disabled_patches.add("Seekbar"); enabled_patches.discard("Seekbar")
+                  if not yt_branding: disabled_patches.add("Custom branding"); enabled_patches.discard("Custom branding")
+                  if yt_shorts: enabled_patches.add("Hide Shorts components"); disabled_patches.discard("Hide Shorts components")
 
               elif app == "YouTube-Music":
-                  if not ytm_ads: disabled_patches.add("Hide ads")
-                  if not ytm_crossfade: disabled_patches.add("Crossfade")
-                  if not ytm_lyrics: disabled_patches.add("Third-party lyrics")
-                  if not ytm_bg: disabled_patches.add("Remove background playback restrictions")
-                  if not ytm_sponsor: disabled_patches.add("SponsorBlock")
-                  if not ytm_dislike: disabled_patches.add("Return YouTube Dislike")
-                  if not ytm_dl: disabled_patches.add("Downloads")
+                  if not ytm_ads: disabled_patches.add("Hide ads"); enabled_patches.discard("Hide ads")
+                  if not ytm_crossfade: disabled_patches.add("Crossfade"); enabled_patches.discard("Crossfade")
+                  if not ytm_lyrics: disabled_patches.add("Third-party lyrics"); enabled_patches.discard("Third-party lyrics")
+                  if not ytm_bg: disabled_patches.add("Remove background playback restrictions"); enabled_patches.discard("Remove background playback restrictions")
+                  if not ytm_sponsor: disabled_patches.add("SponsorBlock"); enabled_patches.discard("SponsorBlock")
+                  if not ytm_dislike: disabled_patches.add("Return YouTube Dislike"); enabled_patches.discard("Return YouTube Dislike")
+                  if not ytm_dl: disabled_patches.add("Downloads"); enabled_patches.discard("Downloads")
                   if not ytm_remember:
                       disabled_patches.add("Remember repeat state")
                       disabled_patches.add("Remember shuffle state")
-                  if not ytm_branding: disabled_patches.add("Custom branding")
+                      enabled_patches.discard("Remember repeat state")
+                      enabled_patches.discard("Remember shuffle state")
+                  if not ytm_branding: disabled_patches.add("Custom branding"); enabled_patches.discard("Custom branding")
 
-              # Handle Root Mode
+              # Root mode
               if install_type == "Root (without GmsCore)":
                   disabled_patches.add("GmsCore support")
+                  enabled_patches.discard("GmsCore support")
 
-              # Additional typed exclusions/inclusions
+              # Custom inputs
               if custom_exclude:
                   for p in custom_exclude.split(","):
                       p = p.strip()
-                      if p: disabled_patches.add(p)
+                      if p:
+                          disabled_patches.add(p)
+                          enabled_patches.discard(p)
 
               if custom_include:
                   for p in custom_include.split(","):
                       p = p.strip()
-                      if p: enabled_patches.add(p)
+                      if p:
+                          enabled_patches.add(p)
+                          disabled_patches.discard(p)
 
               for d in disabled_patches:
                   args.extend(["-d", d])
-                  print(f"[{app}] Disabled: {d}")
 
               for e in enabled_patches:
                   args.extend(["-e", e])
-                  print(f"[{app}] Enabled: {e}")
 
               args.append(input_apk)
-              print(f"Patching {app}...")
+              print(f"Applying {len(enabled_patches)} enabled patches (and {len(disabled_patches)} disabled) for {app}...")
               res = subprocess.run(args)
               if res.returncode != 0:
                   print(f"❌ Patching failed for {app}")
