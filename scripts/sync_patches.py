@@ -166,7 +166,7 @@ on:
         type: boolean
 
       custom_apk_url:
-        description: '🔗 Custom APK URL(s) (Comma/Space se multiple links bhi de sakte hain)'
+        description: '🔗 Custom APK URL(s) (Comma , se multiple links de sakte hain)'
         required: false
         default: ''
         type: string

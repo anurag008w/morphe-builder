@@ -11,7 +11,7 @@ def resolve_custom_urls(custom_input, targets, default_urls):
     if not custom_input:
         return default_urls
     
-    raw_urls = [u.strip() for u in re.split(r"[,\n\s]+", custom_input) if u.strip().startswith("http")]
+    raw_urls = [u.strip() for u in custom_input.split(",") if u.strip().startswith("http")]
     if not raw_urls:
         return default_urls
 
