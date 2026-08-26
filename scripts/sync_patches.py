@@ -29,77 +29,45 @@ def discover_packages():
     pkgs = set(re.findall(r"Package name:\s*([a-zA-Z0-9._]+)", raw))
     return sorted(pkgs)
 
-def get_patches_with_options(package_name):
-    # 1. Generate options JSON to get raw options
-    temp_opts_file = f"/tmp/opts_{slugify(package_name)}.json"
-    cmd_opts = ["java", "-jar", cli_jar, "options-create", f"-p={patches_mpp}", f"-f={package_name}", f"-o={temp_opts_file}"]
-    subprocess.run(cmd_opts, capture_output=True, text=True)
-    
-    opts_map = {}
-    if os.path.exists(temp_opts_file):
-        try:
-            with open(temp_opts_file, "r") as f:
-                d = json.load(f)
-                opts_map = d[0].get("patches", {})
-        except Exception:
-            pass
-
-    # 2. Get list of patches with descriptions
-    cmd = ["java", "-jar", cli_jar, "list-patches", f"--patches={patches_mpp}", f"-f={package_name}"]
-    res = subprocess.run(cmd, capture_output=True, text=True)
-    raw = res.stdout + res.stderr
-    entries = raw.split("Index: ")
-    patches = []
-    
-    for entry in entries:
-        if not entry.strip(): continue
-        name_m = re.search(r"Name:\s*(.+)", entry)
-        desc_m = re.search(r"Description:\s*(.+)", entry)
-        enabled_m = re.search(r"Enabled:\s*(true|false)", entry)
-        if name_m and enabled_m:
-            p_name = name_m.group(1).strip()
-            p_opts = opts_map.get(p_name, {}).get("options", None)
-            patches.append({
-                "name": p_name,
-                "desc": desc_m.group(1).strip() if desc_m else "",
-                "enabled": enabled_m.group(1).strip() == "true",
-                "options": p_opts
-            })
-    return patches
-
-def write_config_file(patches, app_name, package_name, out_file):
-    lines = [
-        f"# ========================================================",
-        f"#  Morphe Patches for {app_name} ({package_name})",
-        f"#  Total Patches: {len(patches)}",
-        f"# ========================================================",
-        f"# Instructions:",
-        f"# - Jo patch chahiye, use waise hi rehne dein (ENABLED).",
-        f"# - Jo patch NAHI chahiye, us line ke aage # laga dein (DISABLED).",
-        f"# - Agar kisi patch ke options set karne hain (e.g. appName),",
-        f"#   aap options-{out_file.split('/')[-1].replace('-patches.txt', '')}.json me edit kar sakte hain.",
-        f"# ========================================================\n"
-    ]
-    for idx, p in enumerate(patches, 1):
-        clean_desc = p['desc'].replace('\n', ' ')
-        opt_str = ""
-        if p["options"]:
-            opt_str = f"\n#   ↳ Available Options: {json.dumps(p['options'])}"
-
-        if p["enabled"]:
-            lines.append(f"# [{idx}/{len(patches)}] [ENABLED] {clean_desc}{opt_str}")
-            lines.append(f"{p['name']}\n")
-        else:
-            lines.append(f"# [{idx}/{len(patches)}] [DISABLED] {clean_desc}{opt_str}")
-            lines.append(f"# {p['name']}\n")
-    with open(out_file, "w") as f:
-        f.write("\n".join(lines))
-    print(f"✅ Generated {out_file} with options & numbering ({len(patches)} patches)")
-
-def write_options_json(package_name, out_file):
-    cmd = ["java", "-jar", cli_jar, "options-create", f"-p={patches_mpp}", f"-f={package_name}", f"-o={out_file}"]
+def generate_and_merge_options_json(package_name, out_file):
+    temp_file = f"/tmp/new_opts_{slugify(package_name)}.json"
+    cmd = ["java", "-jar", cli_jar, "options-create", f"-p={patches_mpp}", f"-f={package_name}", f"-o={temp_file}"]
     subprocess.run(cmd, capture_output=True, text=True)
-    print(f"✅ Generated {out_file} (Options JSON)")
+    
+    if not os.path.exists(temp_file):
+        print(f"Error: Could not generate options for {package_name}")
+        return {}
+
+    with open(temp_file, "r") as f:
+        new_data = json.load(f)
+
+    # If user already had a config/options-*.json file, preserve their custom edits
+    if os.path.exists(out_file):
+        try:
+            with open(out_file, "r") as f:
+                existing_data = json.load(f)
+            
+            existing_patches = existing_data[0].get("patches", {})
+            new_patches = new_data[0].get("patches", {})
+
+            for p_name, p_data in existing_patches.items():
+                if p_name in new_patches:
+                    # Preserve user's enabled status
+                    if "enabled" in p_data:
+                        new_patches[p_name]["enabled"] = p_data["enabled"]
+                    # Preserve user's customized options
+                    if "options" in p_data and "options" in new_patches[p_name]:
+                        new_patches[p_name]["options"].update(p_data["options"])
+            
+            new_data[0]["patches"] = new_patches
+        except Exception as e:
+            print(f"Note: Overwriting options due to parse error: {e}")
+
+    with open(out_file, "w") as f:
+        json.dump(new_data, f, indent=4)
+    
+    print(f"✅ Synced & formatted {out_file} (Total Patches: {len(new_data[0].get('patches', {}))})")
+    return new_data[0].get("patches", {})
 
 print("Scanning all supported apps in Morphe Patches bundle...")
 packages = discover_packages()
@@ -115,15 +83,14 @@ for pkg in packages:
         slug = app_name.lower()
         emoji = "📱"
     
-    patches = get_patches_with_options(pkg)
-    out_file = f"config/{slug}-patches.txt"
     out_opts_json = f"config/options-{slug}.json"
+    patches_dict = generate_and_merge_options_json(pkg, out_opts_json)
     
-    write_config_file(patches, app_name, pkg, out_file)
-    if not os.path.exists(out_opts_json):
-        write_options_json(pkg, out_opts_json)
-    
-    disabled_patches = [p for p in patches if not p["enabled"]]
+    disabled_patches = []
+    for p_name, p_val in patches_dict.items():
+        if not p_val.get("enabled", True):
+            disabled_patches.append({"name": p_name})
+
     app_data.append({
         "name": app_name,
         "slug": slug,
@@ -318,12 +285,6 @@ jobs:
               "Reddit": "${{{{ env.DEFAULT_REDDIT_URL }}}}"
           }}
 
-          cfg_map = {{
-              "YouTube": "config/youtube-patches.txt",
-              "YouTube-Music": "config/ytmusic-patches.txt",
-              "Reddit": "config/reddit-patches.txt"
-          }}
-
           user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
           headers = {{
               "User-Agent": user_agent,
@@ -369,7 +330,7 @@ jobs:
               
               apk_url = custom_url if (custom_url and len(targets) == 1) else default_urls.get(app)
               if not apk_url:
-                  print(f"Notice: No default URL for {{app}}. Please provide custom_apk_url.")
+                  print(f"Notice: No default URL configured for {{app}}. Please provide custom_apk_url.")
                   continue
 
               input_apk = f"input-{{app}}.apk"
@@ -388,52 +349,38 @@ jobs:
               slug = app.lower().replace("-", "")
               opts_json_file = f"config/options-{{slug}}.json"
 
-              # 1. Pass options JSON file if available
+              # Load options JSON file
+              options_data = None
               if os.path.exists(opts_json_file):
-                  args.append(f"--options-file={{opts_json_file}}")
-                  print(f"Using Options JSON file: {{opts_json_file}}")
+                  with open(opts_json_file, "r") as f:
+                      options_data = json.load(f)
 
-              # 2. READ EXACT PATCH STATUS FROM TXT FILE
-              cfg_file = cfg_map.get(app, f"config/{{slug}}-patches.txt")
-              enabled_patches = set()
-              disabled_patches = set()
+              runtime_opts_file = f"/tmp/runtime_options_{{slug}}.json"
+              if options_data:
+                  patches_dict = options_data[0].get("patches", {{}})
 
-              if os.path.exists(cfg_file):
-                  print(f"Reading exact patch list from: {{cfg_file}}")
-                  with open(cfg_file, "r") as f:
-                      for line in f:
-                          line = line.strip()
-                          if not line or line.startswith("# =") or line.startswith("# [") or line.startswith("# -") or line.startswith("# Morphe") or line.startswith("# Instructions") or line.startswith("#   ↳"):
-                              continue
-                          if line.startswith("#"):
-                              p_name = line.lstrip("#").strip()
-                              if p_name: disabled_patches.add(p_name)
-                          else:
-                              enabled_patches.add(line)
-                  print(f"[{{app}}] Loaded: {{len(enabled_patches)}} Enabled, {{len(disabled_patches)}} Disabled")
+                  # 1. Apply UI popup toggles for disabled patches if checked
+                  for key, val in workflow_inputs.items():
+                      if key.startswith(f"INPUT_ENABLE_{{slug.upper()}}_") and val == "true":
+                          for p_name in patches_dict:
+                              if re.sub(r'[^a-zA-Z0-9_]', '_', p_name.lower()) in key.lower():
+                                  patches_dict[p_name]["enabled"] = True
+                                  print(f"[{{app}}] Enabled via popup toggle: {{p_name}}")
 
-              # 3. CHECK DYNAMIC DISABLED TOGGLES FROM POPUP
-              for key, val in workflow_inputs.items():
-                  if key.startswith(f"INPUT_ENABLE_{{slug.upper()}}_") and val == "true":
-                      for dp in list(disabled_patches):
-                          if re.sub(r'[^a-zA-Z0-9_]', '_', dp.lower()) in key.lower():
-                              enabled_patches.add(dp)
-                              disabled_patches.discard(dp)
-                              print(f"[{{app}}] Enabled via popup toggle: {{dp}}")
+                  # 2. Apply Root mode handling
+                  if install_type == "Root (without GmsCore)":
+                      if "GmsCore support" in patches_dict:
+                          patches_dict["GmsCore support"]["enabled"] = False
 
-              # Root mode handling
-              if install_type == "Root (without GmsCore)":
-                  disabled_patches.add("GmsCore support")
-                  enabled_patches.discard("GmsCore support")
+                  options_data[0]["patches"] = patches_dict
+                  with open(runtime_opts_file, "w") as f:
+                      json.dump(options_data, f, indent=4)
 
-              for d in disabled_patches:
-                  args.extend(["-d", d])
-
-              for e in enabled_patches:
-                  args.extend(["-e", e])
+                  args.append(f"--options-file={{runtime_opts_file}}")
+                  print(f"✅ Loaded Options JSON: {{opts_json_file}} with {len(patches_dict)} patches")
 
               args.append(input_apk)
-              print(f"Applying {{len(enabled_patches)}} enabled patches for {{app}}...")
+              print(f"Executing patcher for {{app}}...")
               res = subprocess.run(args)
               if res.returncode != 0:
                   print(f"❌ Patching failed for {{app}}")
@@ -474,7 +421,7 @@ jobs:
             - **Built on:** ${{{{ github.event.repository.updated_at }}}}
 
             #### 📦 Included Downloads:
-            - Patched APKs are listed in Assets below (Built strictly using `config/*.txt` and `config/options-*.json`).
+            - Patched APKs are listed in Assets below (Built strictly using pure JSON options).
             - GmsCore (MicroG) included for non-root Google account login.
             - `sha256sum.txt` included for file integrity verification.
           files: output/*
@@ -485,4 +432,4 @@ jobs:
 with open(workflow_file, "w") as wf:
     wf.write(workflow_yaml)
 
-print("✅ Successfully generated build-morphe-apk.yml with dynamic patch options!")
+print("✅ Pure JSON workflow & sync scripts successfully generated!")
