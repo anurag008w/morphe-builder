@@ -13,9 +13,9 @@ def main():
     arch = os.environ.get("INPUT_ARCHITECTURE", "all")
 
     default_urls = {
-        "YouTube": os.environ.get("DEFAULT_YOUTUBE_URL"),
-        "YouTube-Music": os.environ.get("DEFAULT_YTMUSIC_URL"),
-        "Reddit": os.environ.get("DEFAULT_REDDIT_URL")
+        "YouTube": os.environ.get("DEFAULT_YOUTUBE_URL", "https://www.apkmirror.com/apk/google-inc/youtube/youtube-21-04-223-release/youtube-21-04-223-android-apk-download/download/?key=b87ce717c47f3920c139dae8e15df2ba744764e9&forcebaseapk=true"),
+        "YouTube-Music": os.environ.get("DEFAULT_YTMUSIC_URL", "https://www.apkmirror.com/apk/google-inc/youtube-music/youtube-music-9-15-51-release/youtube-music-9-15-51-4-android-apk-download/download/?key=fed902f297975b9851e611188d3a3764d9217718&forcebaseapk=true"),
+        "Reddit": os.environ.get("DEFAULT_REDDIT_URL", "https://www.apkmirror.com/apk/redditinc/reddit/reddit-2025-08-0-release/reddit-2025-08-0-android-apk-download/download/?forcebaseapk=true")
     }
 
     # Discover all options files present in config/
@@ -45,33 +45,57 @@ def main():
         "Accept-Language": "en-US,en;q=0.5"
     }
 
-    def download_apk(url, dest_file):
-        print(f"Downloading from URL: {url}")
-        headers_with_ref = dict(headers)
-        headers_with_ref["Referer"] = url
-        req = urllib.request.Request(url, headers=headers_with_ref)
-        with urllib.request.urlopen(req) as resp:
-            content_type = resp.headers.get("Content-Type", "").lower()
-            if "application/vnd.android.package-archive" in content_type or "application/zip" in content_type or "octet-stream" in content_type:
-                with open(dest_file, "wb") as f:
-                    f.write(resp.read())
-            else:
-                html = resp.read().decode("utf-8", errors="ignore")
+    def smart_download_apk(initial_url, dest_file):
+        print(f"Downloading APK from: {initial_url}")
+        current_url = initial_url
+        cookie_jar = urllib.request.HTTPCookieProcessor()
+        opener = urllib.request.build_opener(cookie_jar)
+
+        for step in range(5):
+            req_headers = dict(headers)
+            req_headers["Referer"] = current_url
+            req = urllib.request.Request(current_url, headers=req_headers)
+            
+            with opener.open(req) as resp:
+                content_type = resp.headers.get("Content-Type", "").lower()
+                
+                # Check if it's already an APK stream by checking first 4 bytes
+                first_chunk = resp.read(4096)
+                if first_chunk.startswith(b"PK\x03\x04") or "package-archive" in content_type or "octet-stream" in content_type:
+                    with open(dest_file, "wb") as out_f:
+                        out_f.write(first_chunk)
+                        while True:
+                            chunk = resp.read(2 * 1024 * 1024)
+                            if not chunk:
+                                break
+                            out_f.write(chunk)
+                    
+                    file_size = os.path.getsize(dest_file) / (1024 * 1024)
+                    if file_size > 2.0:
+                        print(f"✅ Downloaded Genuine APK package ({file_size:.2f} MB)")
+                        return
+                    else:
+                        print(f"Notice: Downloaded file is too small ({file_size:.2f} MB), trying next link...")
+
+                # If it's HTML, parse the next download button
+                html = (first_chunk + resp.read()).decode("utf-8", errors="ignore")
+                
+                # Look for download.php link
                 matches = re.findall(r'href=[\"\']([^\"\']*download\.php[^\"\']*)[\"\']', html)
                 if not matches:
-                    matches = re.findall(r'href=[\"\']([^\"\']*(?:download|downloading)[^\"\']*)[\"\']', html)
+                    matches = re.findall(r'href=[\"\']([^\"\']*(?:downloading|wp-content)[^\"\']*)[\"\']', html)
                 if not matches:
-                    raise Exception(f"Failed to parse direct link from webpage: {url}")
+                    # Look for button links
+                    matches = re.findall(r'href=[\"\']([^\"\']*(?:apk-download\/download)[^\"\']*)[\"\']', html)
                 
-                sub_link = matches[0]
-                direct_url = "https://www.apkmirror.com" + sub_link if sub_link.startswith("/") else sub_link
-                sub_req = urllib.request.Request(direct_url, headers=headers_with_ref)
-                with urllib.request.urlopen(sub_req) as sub_resp, open(dest_file, "wb") as out_f:
-                    while True:
-                        chunk = sub_resp.read(2 * 1024 * 1024)
-                        if not chunk:
-                            break
-                        out_f.write(chunk)
+                if not matches:
+                    raise Exception(f"Failed to locate download link on page: {current_url}")
+                
+                sub_link = matches[0].replace("&amp;", "&")
+                current_url = "https://www.apkmirror.com" + sub_link if sub_link.startswith("/") else sub_link
+                print(f"Navigating to download token: {current_url[:90]}...")
+
+        raise Exception(f"Failed to obtain genuine APK binary after 5 redirects for {initial_url}")
 
     os.makedirs("output", exist_ok=True)
     built_summary = []
@@ -89,9 +113,9 @@ def main():
         input_apk = f"input-{app}.apk"
         output_apk = f"output/Morphe-{app}.apk"
 
-        download_apk(apk_url, input_apk)
+        smart_download_apk(apk_url, input_apk)
         in_size = os.path.getsize(input_apk) / (1024*1024)
-        print(f"✅ {app} stock APK downloaded: {in_size:.2f} MB")
+        print(f"✅ {app} stock APK ready: {in_size:.2f} MB")
 
         args = ["java", "-jar", "build-tools/morphe-desktop.jar", "patch"]
         args.extend(["-p", "build-tools/patches.mpp"])
