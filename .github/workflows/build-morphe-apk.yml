@@ -6,92 +6,23 @@ on:
       app_type:
         description: '📱 Kaunsa app patch karna hai?'
         required: true
-        default: 'YouTube'
+        default: 'All (YouTube + YouTube-Music)'
         type: choice
         options:
+          - 'All (YouTube + YouTube-Music)'
           - 'YouTube'
           - 'YouTube-Music'
-          - 'All (YouTube + YouTube-Music)'
           - 'Reddit'
 
-      # =========================================================
-      # 🔘 DIRECT UI CHECKBOXES (YAHAN TICK / UNTICK KAREIN)
-      # =========================================================
-      patch_hide_ads:
-        description: '☑️ Block Video & Banner Ads'
+      install_type:
+        description: '🔑 Install Type (Non-Root vs Root)'
         required: true
-        default: true
-        type: boolean
+        default: 'Non-Root (with GmsCore)'
+        type: choice
+        options:
+          - 'Non-Root (with GmsCore)'
+          - 'Root (without GmsCore)'
 
-      patch_sponsorblock:
-        description: '☑️ SponsorBlock (Skip Sponsored Segments)'
-        required: true
-        default: true
-        type: boolean
-
-      patch_return_dislike:
-        description: '☑️ Return YouTube Dislike (Show Dislike Count)'
-        required: true
-        default: true
-        type: boolean
-
-      patch_background_play:
-        description: '☑️ Background Playback (Screen Off / Pip Mode)'
-        required: true
-        default: true
-        type: boolean
-
-      patch_downloads:
-        description: '☑️ Downloads Button (Support External Downloader)'
-        required: true
-        default: true
-        type: boolean
-
-      patch_swipe_controls:
-        description: '☑️ Swipe Controls (Volume & Brightness Gestures)'
-        required: true
-        default: true
-        type: boolean
-
-      patch_seekbar:
-        description: '☑️ Seekbar Customizations (Old Seekbar & Tap to Seek)'
-        required: true
-        default: true
-        type: boolean
-
-      patch_hide_shorts:
-        description: '⬜ Hide Shorts Tab & Shelf (Shorts band karna)'
-        required: true
-        default: false
-        type: boolean
-
-      patch_crossfade:
-        description: '☑️ [YT Music] Dual-Player Crossfade'
-        required: true
-        default: true
-        type: boolean
-
-      patch_lyrics:
-        description: '☑️ [YT Music] Third-party Synced Lyrics'
-        required: true
-        default: true
-        type: boolean
-
-      patch_custom_branding:
-        description: '☑️ Custom Branding (Morphe App Icon & Name)'
-        required: true
-        default: true
-        type: boolean
-
-      patch_gmscore:
-        description: '☑️ Non-Root GmsCore (MicroG Login Support)'
-        required: true
-        default: true
-        type: boolean
-
-      # =========================================================
-      # ⚙️ ADVANCED SETTINGS
-      # =========================================================
       architecture:
         description: '⚡ Architecture (arm64-v8a se APK chhota banta hai)'
         required: true
@@ -107,18 +38,6 @@ on:
         required: true
         default: true
         type: boolean
-
-      custom_exclude_patches:
-        description: '🚫 Koi aur patch band karna hai? (Comma-separated)'
-        required: false
-        default: ''
-        type: string
-
-      custom_include_patches:
-        description: '➕ Koi aur patch chalu karna hai? (Comma-separated)'
-        required: false
-        default: ''
-        type: string
 
       custom_apk_url:
         description: '🔗 Custom APK URL (Khaali chhodoge toh default use hoga)'
@@ -184,7 +103,7 @@ jobs:
           urllib.request.urlretrieve(cli_url, "build-tools/morphe-desktop.jar")
 
           # 2. Fetch Morphe Patches (.mpp)
-          print("Fetching latest Morphe Patches...")
+          print("Fetching latest Morphe Patches bundle...")
           req_patches = urllib.request.Request("https://api.github.com/repos/MorpheApp/morphe-patches/releases/latest", headers=headers)
           patches_data = json.loads(urllib.request.urlopen(req_patches).read().decode())
           mpp_url = None
@@ -198,7 +117,7 @@ jobs:
           print(f"Downloading Patches from {mpp_url}...")
           urllib.request.urlretrieve(mpp_url, "build-tools/patches.mpp")
 
-          # 3. Optional: Fetch Latest MicroG (GmsCore)
+          # 3. Fetch Latest MicroG (GmsCore)
           if "${{ github.event.inputs.include_microg }}" == "true":
               try:
                   print("Fetching latest MicroG GmsCore...")
@@ -222,24 +141,8 @@ jobs:
 
           app_choice = "${{ github.event.inputs.app_type }}"
           custom_url = "${{ github.event.inputs.custom_apk_url }}".strip()
+          install_type = "${{ github.event.inputs.install_type }}"
           arch = "${{ github.event.inputs.architecture }}"
-
-          # Toggles from GitHub UI
-          toggle_ads = "${{ github.event.inputs.patch_hide_ads }}" == "true"
-          toggle_sponsor = "${{ github.event.inputs.patch_sponsorblock }}" == "true"
-          toggle_dislike = "${{ github.event.inputs.patch_return_dislike }}" == "true"
-          toggle_bg = "${{ github.event.inputs.patch_background_play }}" == "true"
-          toggle_dl = "${{ github.event.inputs.patch_downloads }}" == "true"
-          toggle_swipe = "${{ github.event.inputs.patch_swipe_controls }}" == "true"
-          toggle_seekbar = "${{ github.event.inputs.patch_seekbar }}" == "true"
-          toggle_shorts = "${{ github.event.inputs.patch_hide_shorts }}" == "true"
-          toggle_crossfade = "${{ github.event.inputs.patch_crossfade }}" == "true"
-          toggle_lyrics = "${{ github.event.inputs.patch_lyrics }}" == "true"
-          toggle_branding = "${{ github.event.inputs.patch_custom_branding }}" == "true"
-          toggle_gmscore = "${{ github.event.inputs.patch_gmscore }}" == "true"
-
-          custom_exclude = "${{ github.event.inputs.custom_exclude_patches }}".strip()
-          custom_include = "${{ github.event.inputs.custom_include_patches }}".strip()
 
           targets = []
           if app_choice == "All (YouTube + YouTube-Music)":
@@ -251,6 +154,12 @@ jobs:
               "YouTube": "${{ env.DEFAULT_YOUTUBE_URL }}",
               "YouTube-Music": "${{ env.DEFAULT_YTMUSIC_URL }}",
               "Reddit": "${{ env.DEFAULT_REDDIT_URL }}"
+          }
+
+          cfg_map = {
+              "YouTube": "config/youtube-patches.txt",
+              "YouTube-Music": "config/ytmusic-patches.txt",
+              "Reddit": "config/reddit-patches.txt"
           }
 
           user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
@@ -307,53 +216,43 @@ jobs:
               if arch != "all":
                   args.append(f"--striplibs={arch}")
 
-              # Dynamic Patch Flags based on UI Checkboxes
-              disabled_patches = set()
-              enabled_patches = set()
+              # Parse APP-SPECIFIC config file (All 79 YouTube patches or All 43 YT Music patches)
+              cfg_file = cfg_map.get(app)
+              enabled_patches = []
+              disabled_patches = []
 
-              if not toggle_ads: disabled_patches.add("Hide ads")
-              if not toggle_sponsor: disabled_patches.add("SponsorBlock")
-              if not toggle_dislike: disabled_patches.add("Return YouTube Dislike")
-              if not toggle_bg: disabled_patches.add("Remove background playback restrictions")
-              if not toggle_dl: disabled_patches.add("Downloads")
-              if not toggle_swipe: disabled_patches.add("Swipe controls")
-              if not toggle_seekbar: disabled_patches.add("Seekbar")
-              if not toggle_crossfade: disabled_patches.add("Crossfade")
-              if not toggle_lyrics: disabled_patches.add("Third-party lyrics")
-              if not toggle_branding: disabled_patches.add("Custom branding")
-              if not toggle_gmscore: disabled_patches.add("GmsCore support")
-              
-              # Hide shorts toggle
-              if toggle_shorts:
-                  enabled_patches.add("Hide Shorts components")
+              if os.path.exists(cfg_file):
+                  print(f"Loading exact patch configurations from {cfg_file}...")
+                  with open(cfg_file, "r") as f:
+                      for line in f:
+                          line = line.strip()
+                          if not line or line.startswith("# =") or line.startswith("# [") or line.startswith("# -") or line.startswith("# Morphe") or line.startswith("# Instructions"):
+                              continue
+                          if line.startswith("#"):
+                              p_name = line.lstrip("#").strip()
+                              if p_name:
+                                  disabled_patches.append(p_name)
+                          else:
+                              enabled_patches.append(line)
 
-              # Custom typed exclusions
-              if custom_exclude:
-                  for p in custom_exclude.split(","):
-                      p = p.strip()
-                      if p: disabled_patches.add(p)
+                  print(f"[{app}] Total Enabled: {len(enabled_patches)} | Total Disabled: {len(disabled_patches)}")
+                  for e in enabled_patches:
+                      args.extend(["-e", e])
+                  for d in disabled_patches:
+                      args.extend(["-d", d])
+              else:
+                  print(f"Warning: {cfg_file} not found, using patch bundle defaults.")
 
-              # Custom typed inclusions
-              if custom_include:
-                  for p in custom_include.split(","):
-                      p = p.strip()
-                      if p: enabled_patches.add(p)
-
-              for d in disabled_patches:
-                  args.extend(["-d", d])
-                  print(f"Disabled Patch: {d}")
-
-              for e in enabled_patches:
-                  args.extend(["-e", e])
-                  print(f"Enabled Patch: {e}")
+              if install_type == "Root (without GmsCore)":
+                  args.extend(["-d", "GmsCore support"])
 
               args.append(input_apk)
-              print(f"Patching {app}...")
+              print(f"Executing patcher for {app}...")
               res = subprocess.run(args)
               if res.returncode != 0:
                   print(f"❌ Patching failed for {app}")
                   sys.exit(res.returncode)
-              print(f"✅ {app} successfully patched!")
+              print(f"✅ {app} successfully patched with all configured patches!")
 
           # Generate SHA256 Checksums
           with open("output/sha256sum.txt", "w") as chk_file:
@@ -385,10 +284,11 @@ jobs:
             ### 💊 Morphe Patched Apps Release
             - **Target:** ${{ github.event.inputs.app_type }}
             - **Architecture:** ${{ github.event.inputs.architecture }}
+            - **Install Type:** ${{ github.event.inputs.install_type }}
             - **Built on:** ${{ github.event.repository.updated_at }}
 
             #### 📦 Included Downloads:
-            - Patched APKs are listed in Assets below.
+            - Patched APKs are listed in Assets below (Built strictly using `config/*.txt` patches).
             - GmsCore (MicroG) included for non-root Google account login.
             - `sha256sum.txt` included for file integrity verification.
           files: output/*
