@@ -86,13 +86,20 @@ def download_apk(url, dest_file):
 
             # Parse HTML to find next download link
             html = (first_chunk + resp.read()).decode("utf-8", errors="ignore")
-            matches = re.findall(r'href=[\"\']([^\"\']*(?:download\.php|downloading|wp-content)[^\"\']*)[\"\']', html)
+            
+            # 1. Search for download.php token link
+            matches = re.findall(r'href=[\"\']([^\"\']*download\.php\?[^\"\']*)[\"\']', html)
+            if not matches:
+                # 2. Search for download button link
+                matches = re.findall(r'href=[\"\']([^\"\']*(?:apk-download\/download\/\?|downloading\/\?)[^\"\']*)[\"\']', html)
             if not matches:
                 matches = re.findall(r'href=[\"\']([^\"\']*(?:apk-download\/download)[^\"\']*)[\"\']', html)
-            if not matches:
+            
+            valid_matches = [m for m in matches if not any(ext in m for ext in [".css", ".js", ".png", ".jpg", ".svg"])]
+            if not valid_matches:
                 raise Exception(f"Failed to find download link on page: {curr_url}")
             
-            sub_link = matches[0].replace("&amp;", "&")
+            sub_link = valid_matches[0].replace("&amp;", "&")
             curr_url = "https://www.apkmirror.com" + sub_link if sub_link.startswith("/") else sub_link
             print(f"Following download token (hop {step+1}): {curr_url[:80]}...")
 
