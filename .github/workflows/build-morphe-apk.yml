@@ -24,121 +24,52 @@ on:
           - 'Root (without GmsCore)'
 
       # =========================================================
-      # 🔴 YOUTUBE PATCHES (DIRECT CHECKBOXES)
+      # ⚙️ OPTIONAL DISABLED-BY-DEFAULT PATCHES (UNCHECKED BY DEFAULT)
       # =========================================================
-      yt_hide_ads:
-        description: '🔴 [YT] Block Video & Banner Ads'
+      yt_enable_clone_app:
+        description: '🔴 [YT] Clone app (Install as separate second app)'
         required: true
-        default: true
+        default: false
         type: boolean
 
-      yt_sponsorblock:
-        description: '🔴 [YT] SponsorBlock (Skip Sponsored Segments)'
-        required: true
-        default: true
-        type: boolean
-
-      yt_return_dislike:
-        description: '🔴 [YT] Return YouTube Dislike (Show Dislike Count)'
-        required: true
-        default: true
-        type: boolean
-
-      yt_background_play:
-        description: '🔴 [YT] Background Playback (Screen Off / Pip)'
-        required: true
-        default: true
-        type: boolean
-
-      yt_downloads:
-        description: '🔴 [YT] Downloads Button (External Downloader Support)'
-        required: true
-        default: true
-        type: boolean
-
-      yt_swipe_controls:
-        description: '🔴 [YT] Swipe Controls (Volume & Brightness Gestures)'
-        required: true
-        default: true
-        type: boolean
-
-      yt_seekbar:
-        description: '🔴 [YT] Seekbar Customizations (Old Seekbar & Tap to Seek)'
-        required: true
-        default: true
-        type: boolean
-
-      yt_hide_shorts:
+      yt_enable_hide_shorts:
         description: '🔴 [YT] Hide Shorts Tab & Shelf (Shorts band karna)'
         required: true
         default: false
         type: boolean
 
-      yt_custom_branding:
-        description: '🔴 [YT] Custom Branding (Morphe App Icon & Name)'
+      yt_enable_change_installer:
+        description: '🔴 [YT] Spoof Installer (Play Store Source Spoofing)'
         required: true
-        default: true
+        default: false
+        type: boolean
+
+      yt_enable_disable_updates:
+        description: '🔴 [YT] Disable Play Store Auto-Updates'
+        required: true
+        default: false
+        type: boolean
+
+      ytm_enable_clone_app:
+        description: '🎵 [YT Music] Clone app (Install as separate second app)'
+        required: true
+        default: false
+        type: boolean
+
+      ytm_enable_change_installer:
+        description: '🎵 [YT Music] Spoof Installer (Play Store Source Spoofing)'
+        required: true
+        default: false
+        type: boolean
+
+      ytm_enable_disable_updates:
+        description: '🎵 [YT Music] Disable Play Store Auto-Updates'
+        required: true
+        default: false
         type: boolean
 
       # =========================================================
-      # 🎵 YOUTUBE MUSIC PATCHES (DIRECT CHECKBOXES)
-      # =========================================================
-      ytm_hide_ads:
-        description: '🎵 [YT Music] Block Ads & Premium Promotions'
-        required: true
-        default: true
-        type: boolean
-
-      ytm_crossfade:
-        description: '🎵 [YT Music] Dual-Player Crossfade (Smooth Transition)'
-        required: true
-        default: true
-        type: boolean
-
-      ytm_lyrics:
-        description: '🎵 [YT Music] Third-party Synced Lyrics (LRCLIB)'
-        required: true
-        default: true
-        type: boolean
-
-      ytm_background_play:
-        description: '🎵 [YT Music] Background Audio Playback'
-        required: true
-        default: true
-        type: boolean
-
-      ytm_sponsorblock:
-        description: '🎵 [YT Music] SponsorBlock (Skip Non-Music Segments)'
-        required: true
-        default: true
-        type: boolean
-
-      ytm_return_dislike:
-        description: '🎵 [YT Music] Return YouTube Dislike'
-        required: true
-        default: true
-        type: boolean
-
-      ytm_downloads:
-        description: '🎵 [YT Music] In-App Music Downloader Button'
-        required: true
-        default: true
-        type: boolean
-
-      ytm_remember_state:
-        description: '🎵 [YT Music] Remember Shuffle & Repeat State'
-        required: true
-        default: true
-        type: boolean
-
-      ytm_custom_branding:
-        description: '🎵 [YT Music] Custom Branding (Icon & Name)'
-        required: true
-        default: true
-        type: boolean
-
-      # =========================================================
-      # ⚙️ ADVANCED SETTINGS
+      # ⚡ BUILD & DEVICE SETTINGS
       # =========================================================
       architecture:
         description: '⚡ Architecture (arm64-v8a se APK chhota banta hai)'
@@ -155,18 +86,6 @@ on:
         required: true
         default: true
         type: boolean
-
-      custom_exclude_patches:
-        description: '🚫 Koi aur patch band karna hai? (Comma-separated)'
-        required: false
-        default: ''
-        type: string
-
-      custom_include_patches:
-        description: '➕ Koi aur patch chalu karna hai? (Comma-separated)'
-        required: false
-        default: ''
-        type: string
 
       custom_apk_url:
         description: '🔗 Custom APK URL (Khaali chhodoge toh default use hoga)'
@@ -273,30 +192,15 @@ jobs:
           install_type = "${{ github.event.inputs.install_type }}"
           arch = "${{ github.event.inputs.architecture }}"
 
-          # YouTube Checkboxes
-          yt_ads = "${{ github.event.inputs.yt_hide_ads }}" == "true"
-          yt_sponsor = "${{ github.event.inputs.yt_sponsorblock }}" == "true"
-          yt_dislike = "${{ github.event.inputs.yt_return_dislike }}" == "true"
-          yt_bg = "${{ github.event.inputs.yt_background_play }}" == "true"
-          yt_dl = "${{ github.event.inputs.yt_downloads }}" == "true"
-          yt_swipe = "${{ github.event.inputs.yt_swipe_controls }}" == "true"
-          yt_seekbar = "${{ github.event.inputs.yt_seekbar }}" == "true"
-          yt_shorts = "${{ github.event.inputs.yt_hide_shorts }}" == "true"
-          yt_branding = "${{ github.event.inputs.yt_custom_branding }}" == "true"
+          # Disabled-by-default checkboxes
+          yt_clone = "${{ github.event.inputs.yt_enable_clone_app }}" == "true"
+          yt_shorts = "${{ github.event.inputs.yt_enable_hide_shorts }}" == "true"
+          yt_installer = "${{ github.event.inputs.yt_enable_change_installer }}" == "true"
+          yt_updates = "${{ github.event.inputs.yt_enable_disable_updates }}" == "true"
 
-          # YT Music Checkboxes
-          ytm_ads = "${{ github.event.inputs.ytm_hide_ads }}" == "true"
-          ytm_crossfade = "${{ github.event.inputs.ytm_crossfade }}" == "true"
-          ytm_lyrics = "${{ github.event.inputs.ytm_lyrics }}" == "true"
-          ytm_bg = "${{ github.event.inputs.ytm_background_play }}" == "true"
-          ytm_sponsor = "${{ github.event.inputs.ytm_sponsorblock }}" == "true"
-          ytm_dislike = "${{ github.event.inputs.ytm_return_dislike }}" == "true"
-          ytm_dl = "${{ github.event.inputs.ytm_downloads }}" == "true"
-          ytm_remember = "${{ github.event.inputs.ytm_remember_state }}" == "true"
-          ytm_branding = "${{ github.event.inputs.ytm_custom_branding }}" == "true"
-
-          custom_exclude = "${{ github.event.inputs.custom_exclude_patches }}".strip()
-          custom_include = "${{ github.event.inputs.custom_include_patches }}".strip()
+          ytm_clone = "${{ github.event.inputs.ytm_enable_clone_app }}" == "true"
+          ytm_installer = "${{ github.event.inputs.ytm_enable_change_installer }}" == "true"
+          ytm_updates = "${{ github.event.inputs.ytm_enable_disable_updates }}" == "true"
 
           targets = []
           if app_choice == "All (YouTube + YouTube-Music)":
@@ -370,13 +274,13 @@ jobs:
               if arch != "all":
                   args.append(f"--striplibs={arch}")
 
-              # 1. READ ALL PATCHES FROM CONFIG FILE FIRST
+              # 1. READ ALL PATCHES STRICTLY FROM CONFIG FILE (config/*.txt)
               cfg_file = cfg_map.get(app)
-              disabled_patches = set()
               enabled_patches = set()
+              disabled_patches = set()
 
               if os.path.exists(cfg_file):
-                  print(f"Loading full patch list from: {cfg_file}")
+                  print(f"Reading exact patch list from: {cfg_file}")
                   with open(cfg_file, "r") as f:
                       for line in f:
                           line = line.strip()
@@ -389,52 +293,36 @@ jobs:
                               enabled_patches.add(line)
                   print(f"[{app}] Loaded from file: {len(enabled_patches)} Enabled, {len(disabled_patches)} Disabled")
 
-              # 2. OVERRIDE WITH RUN WORKFLOW CHECKBOXES
+              # 2. APPLY POPUP TOGGLES FOR DISABLED-BY-DEFAULT PATCHES (IF TICKED)
               if app == "YouTube":
-                  if not yt_ads: disabled_patches.add("Hide ads"); enabled_patches.discard("Hide ads")
-                  if not yt_sponsor: disabled_patches.add("SponsorBlock"); enabled_patches.discard("SponsorBlock")
-                  if not yt_dislike: disabled_patches.add("Return YouTube Dislike"); enabled_patches.discard("Return YouTube Dislike")
-                  if not yt_bg: disabled_patches.add("Remove background playback restrictions"); enabled_patches.discard("Remove background playback restrictions")
-                  if not yt_dl: disabled_patches.add("Downloads"); enabled_patches.discard("Downloads")
-                  if not yt_swipe: disabled_patches.add("Swipe controls"); enabled_patches.discard("Swipe controls")
-                  if not yt_seekbar: disabled_patches.add("Seekbar"); enabled_patches.discard("Seekbar")
-                  if not yt_branding: disabled_patches.add("Custom branding"); enabled_patches.discard("Custom branding")
-                  if yt_shorts: enabled_patches.add("Hide Shorts components"); disabled_patches.discard("Hide Shorts components")
+                  if yt_clone:
+                      enabled_patches.add("Clone app")
+                      disabled_patches.discard("Clone app")
+                  if yt_shorts:
+                      enabled_patches.add("Hide Shorts components")
+                      disabled_patches.discard("Hide Shorts components")
+                  if yt_installer:
+                      enabled_patches.add("Change installer source")
+                      disabled_patches.discard("Change installer source")
+                  if yt_updates:
+                      enabled_patches.add("Disable Play Store updates")
+                      disabled_patches.discard("Disable Play Store updates")
 
               elif app == "YouTube-Music":
-                  if not ytm_ads: disabled_patches.add("Hide ads"); enabled_patches.discard("Hide ads")
-                  if not ytm_crossfade: disabled_patches.add("Crossfade"); enabled_patches.discard("Crossfade")
-                  if not ytm_lyrics: disabled_patches.add("Third-party lyrics"); enabled_patches.discard("Third-party lyrics")
-                  if not ytm_bg: disabled_patches.add("Remove background playback restrictions"); enabled_patches.discard("Remove background playback restrictions")
-                  if not ytm_sponsor: disabled_patches.add("SponsorBlock"); enabled_patches.discard("SponsorBlock")
-                  if not ytm_dislike: disabled_patches.add("Return YouTube Dislike"); enabled_patches.discard("Return YouTube Dislike")
-                  if not ytm_dl: disabled_patches.add("Downloads"); enabled_patches.discard("Downloads")
-                  if not ytm_remember:
-                      disabled_patches.add("Remember repeat state")
-                      disabled_patches.add("Remember shuffle state")
-                      enabled_patches.discard("Remember repeat state")
-                      enabled_patches.discard("Remember shuffle state")
-                  if not ytm_branding: disabled_patches.add("Custom branding"); enabled_patches.discard("Custom branding")
+                  if ytm_clone:
+                      enabled_patches.add("Clone app")
+                      disabled_patches.discard("Clone app")
+                  if ytm_installer:
+                      enabled_patches.add("Change installer source")
+                      disabled_patches.discard("Change installer source")
+                  if ytm_updates:
+                      enabled_patches.add("Disable Play Store updates")
+                      disabled_patches.discard("Disable Play Store updates")
 
               # Root mode
               if install_type == "Root (without GmsCore)":
                   disabled_patches.add("GmsCore support")
                   enabled_patches.discard("GmsCore support")
-
-              # Custom inputs
-              if custom_exclude:
-                  for p in custom_exclude.split(","):
-                      p = p.strip()
-                      if p:
-                          disabled_patches.add(p)
-                          enabled_patches.discard(p)
-
-              if custom_include:
-                  for p in custom_include.split(","):
-                      p = p.strip()
-                      if p:
-                          enabled_patches.add(p)
-                          disabled_patches.discard(p)
 
               for d in disabled_patches:
                   args.extend(["-d", d])
@@ -443,7 +331,7 @@ jobs:
                   args.extend(["-e", e])
 
               args.append(input_apk)
-              print(f"Applying {len(enabled_patches)} enabled patches (and {len(disabled_patches)} disabled) for {app}...")
+              print(f"Applying {len(enabled_patches)} enabled patches for {app}...")
               res = subprocess.run(args)
               if res.returncode != 0:
                   print(f"❌ Patching failed for {app}")
@@ -484,7 +372,7 @@ jobs:
             - **Built on:** ${{ github.event.repository.updated_at }}
 
             #### 📦 Included Downloads:
-            - Patched APKs are listed in Assets below.
+            - Patched APKs are listed in Assets below (Built strictly using `config/*.txt` patches).
             - GmsCore (MicroG) included for non-root Google account login.
             - `sha256sum.txt` included for file integrity verification.
           files: output/*
