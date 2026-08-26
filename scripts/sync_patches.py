@@ -126,7 +126,7 @@ on:
   workflow_dispatch:
     inputs:
       app_type:
-        description: '📱 1. Kaunsa app patch karna hai?'
+        description: '📱 Target Application'
         required: true
         default: '{all_option}'
         type: choice
@@ -134,7 +134,7 @@ on:
 {app_options_yaml}
 
       install_type:
-        description: '🔑 2. Install Type (Non-Root vs Root)'
+        description: '🔑 Installation Type'
         required: true
         default: 'Non-Root (with GmsCore)'
         type: choice
@@ -150,7 +150,7 @@ on:
       # ⚡ BUILD & DEVICE SETTINGS
       # =========================================================
       architecture:
-        description: '⚡ Architecture (arm64-v8a se APK chhota banta hai)'
+        description: '⚡ Target Architecture (arm64-v8a reduces APK size)'
         required: true
         default: 'arm64-v8a'
         type: choice
@@ -160,13 +160,13 @@ on:
           - 'all'
 
       include_microg:
-        description: '📦 Release me latest MicroG (GmsCore) APK include karein?'
+        description: '📦 Include latest MicroG (GmsCore) APK in Release'
         required: true
         default: true
         type: boolean
 
       custom_apk_url:
-        description: '🔗 Custom APK URL(s) (Comma , se multiple links de sakte hain)'
+        description: '🔗 Custom APK URL(s) (Comma-separated for multiple URLs)'
         required: false
         default: ''
         type: string

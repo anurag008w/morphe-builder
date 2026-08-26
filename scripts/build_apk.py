@@ -294,7 +294,7 @@ def main():
     failed_section = ""
     if failed_summary:
         failed_lines = [f"- **{f['name']}**: `{f['error']}`" for f in failed_summary]
-        failed_section = f"\n### ⚠️ Skipped / Failed in this Run:\n" + "\n".join(failed_lines) + "\n*(Aap workflow ko dobara sirf is app ke liye custom URL dekar run kar sakte hain)*\n"
+        failed_section = f"\n### ⚠️ Skipped / Failed in this Run:\n" + "\n".join(failed_lines) + "\n*(You can re-run the workflow for this specific app with a custom URL)*\n"
 
     release_body = f"""## 🚀 Morphe Patched Apps Release
 
